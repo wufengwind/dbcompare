@@ -1,241 +1,309 @@
-# 数据库比较工具 - 测试脚本说明
+# 数据库比较工具测试脚本
 
-这个目录包含了完整的MySQL数据库测试脚本，用于验证数据库比较工具的功能。
+本目录包含了针对不同数据库类型的完整测试脚本，用于验证数据库比较工具的功能。
 
-## 📁 文件说明
+## 支持的数据库类型
 
-### 数据库脚本
-- **`source_db.sql`** - 源数据库测试脚本
-- **`target_db.sql`** - 目标数据库测试脚本
+- **MySQL** 5.7+ / 8.0+
+- **Oracle** 11g+ / 12c+ / 19c+
+- **SQL Server** 2012+ / 2016+ / 2019+
+- **PostgreSQL** 9.6+ / 10+ / 11+ / 12+ / 13+ / 14+
+- **DM8 (达梦)** 8.1+
+- **IBM DB2** 11.1+ / 11.5+
 
-### 测试运行脚本
-- **`run_comparison_test.bat`** - Windows批处理测试脚本
-- **`run_comparison_test.sh`** - Linux/Mac Shell测试脚本
+## 脚本结构
 
-## 🗄️ 测试数据库结构
+每种数据库都包含源和目标数据库脚本，用于模拟实际的比较场景：
 
-### 📊 对象类型覆盖
+### MySQL
+- `mysql_source_db.sql` - MySQL源数据库
+- `mysql_target_db.sql` - MySQL目标数据库
 
-测试脚本涵盖了以下数据库对象类型：
+### Oracle
+- `oracle_source_db.sql` - Oracle源数据库
+- `oracle_target_db.sql` - Oracle目标数据库
 
-| 对象类型 | 源数据库 | 目标数据库 | 说明 |
-|---------|---------|-----------|------|
-| **表 (TABLE)** | 5个表 | 6个表 | 包含相同、不同结构和独有的表 |
-| **视图 (VIEW)** | 3个视图 | 4个视图 | 包含相同、不同逻辑和独有的视图 |
-| **存储过程 (PROCEDURE)** | 3个过程 | 4个过程 | 包含相同、不同逻辑和独有的过程 |
-| **函数 (FUNCTION)** | 3个函数 | 4个函数 | 包含相同、不同逻辑和独有的函数 |
-| **触发器 (TRIGGER)** | 3个触发器 | 4个触发器 | 包含相同、不同逻辑和独有的触发器 |
-| **索引 (INDEX)** | 5个索引 | 4个索引 | 包含相同和不同的索引 |
-| **约束 (CONSTRAINT)** | 多个约束 | 多个约束 | 包含相同和不同的约束 |
+### SQL Server
+- `sqlserver_source_db.sql` - SQL Server源数据库
+- `sqlserver_target_db.sql` - SQL Server目标数据库
 
-### 🔍 比较场景设计
+### PostgreSQL
+- `postgresql_source_db.sql` - PostgreSQL源数据库
+- `postgresql_target_db.sql` - PostgreSQL目标数据库
 
-#### 1. 相同对象
-这些对象在两个数据库中完全相同，用于验证工具能正确识别相同的对象：
+### DM8 (达梦)
+- `dm8_source_db.sql` - DM8源数据库
+- `dm8_target_db.sql` - DM8目标数据库
 
-- **表**: `users` - 用户表，完全相同的结构
-- **视图**: `active_users` - 活跃用户视图，完全相同的SQL
-- **存储过程**: `GetUserById` - 根据ID获取用户，完全相同的逻辑
-- **函数**: `GetDiscountedPrice` - 计算折扣价格，完全相同的实现
-- **触发器**: `users_updated_at` - 更新时间戳，完全相同的逻辑
+### DB2
+- `db2_source_db.sql` - DB2源数据库
+- `db2_target_db.sql` - DB2目标数据库
 
-#### 2. 不同对象
-这些对象在两个数据库中名称相同但结构或逻辑不同：
+## 测试数据库结构
 
-- **表**: 
-  - `products` - 目标数据库增加了 `stock_quantity`, `is_active`, `updated_at` 字段
-  - `orders` - 目标数据库缺少 `status`, `total_amount` 字段
-  - `categories` - 字段名完全不同，但语义相似
+每个测试数据库都包含以下对象类型：
 
-- **视图**:
-  - `order_summary` - 计算逻辑和字段选择不同
+### 表结构
+1. **users** - 用户表
+2. **categories** - 商品分类表
+3. **products** - 商品表
+4. **orders** - 订单表
+5. **source_only_table** / **target_only_table** - 仅在源/目标数据库中存在的表
 
-- **存储过程**:
-  - `CreateOrder` - 源数据库只计算价格，目标数据库还检查库存
+### 数据库对象
+- **视图 (Views)** - 3-4个视图，包括业务逻辑视图
+- **存储过程 (Procedures)** - 3-4个存储过程，包含业务操作
+- **函数 (Functions)** - 3-4个函数，包含计算逻辑
+- **触发器 (Triggers)** - 3-4个触发器，包含审计和数据验证
+- **索引 (Indexes)** - 多个索引，包含单列和复合索引
+- **约束 (Constraints)** - 主键、外键、唯一约束、检查约束
+- **序列 (Sequences)** - 自增序列（适用于支持的数据库）
 
-- **函数**:
-  - `CalculateOrderTotal` - 目标数据库增加了运费计算
+## 设计差异
 
-- **触发器**:
-  - `orders_audit` - 记录方式和内容不同
+为了充分测试比较功能，目标数据库相对于源数据库具有以下差异：
 
-#### 3. 源数据库独有对象
-这些对象只存在于源数据库，用于验证工具能正确识别单边对象：
+### 表结构差异
+- **新增字段** - 目标数据库的某些表包含额外字段
+- **缺失字段** - 目标数据库的某些表缺少源数据库的字段
+- **数据类型差异** - 某些字段类型在两个数据库中不同
+- **约束差异** - 不同的约束定义
 
-- **表**: `source_only_table`
-- **视图**: `source_only_view`
-- **存储过程**: `SourceOnlyProcedure`
-- **函数**: `SourceOnlyFunction`
-- **触发器**: `source_only_trigger`
-- **索引**: `idx_source_only`, `idx_orders_user_date`
+### 对象差异
+- **仅源数据库对象** - 只存在于源数据库的对象
+- **仅目标数据库对象** - 只存在于目标数据库的对象
+- **修改的对象** - 相同名称但定义不同的对象
+- **索引差异** - 不同的索引配置
 
-#### 4. 目标数据库独有对象
-这些对象只存在于目标数据库：
+## 使用方法
 
-- **表**: `target_only_table`, `customer_reviews`
-- **视图**: `target_only_view`, `popular_products`
-- **存储过程**: `TargetOnlyProcedure`, `UpdateProductStock`
-- **函数**: `TargetOnlyFunction`, `GetProductAverageRating`
-- **触发器**: `target_only_trigger`, `review_validation`
-- **索引**: `idx_target_only`, `idx_reviews_rating`
+### 1. MySQL
 
-## 🚀 使用方法
-
-### 前置要求
-
-1. **MySQL服务器** 运行在本地或远程
-2. **数据库比较工具** 已构建 (`mvn package`)
-3. **数据库权限** 能够创建数据库和表
-
-### 步骤1: 准备数据库
-
-#### 使用MySQL命令行
 ```bash
-# 连接到MySQL
-mysql -u root -p
+# 创建源数据库
+mysql -u root -p < mysql_source_db.sql
 
-# 执行源数据库脚本
-source /path/to/test/source_db.sql
+# 创建目标数据库
+mysql -u root -p < mysql_target_db.sql
 
-# 执行目标数据库脚本
-source /path/to/test/target_db.sql
+# 运行比较
+java -jar db-compare-tool.jar \
+  --source-url "jdbc:mysql://localhost:3306/ecommerce_source" \
+  --source-user root \
+  --source-password password \
+  --target-url "jdbc:mysql://localhost:3306/ecommerce_target" \
+  --target-user root \
+  --target-password password \
+  --output-file mysql_comparison_report.html \
+  --format html
 ```
 
-#### 使用MySQL Workbench
-1. 打开MySQL Workbench
-2. 连接到MySQL服务器
-3. 依次执行 `source_db.sql` 和 `target_db.sql`
+### 2. Oracle
 
-### 步骤2: 运行比较测试
-
-#### Windows用户
-```cmd
-cd test
-run_comparison_test.bat
-```
-
-#### Linux/Mac用户
 ```bash
-cd test
-chmod +x run_comparison_test.sh
-./run_comparison_test.sh
+# 使用SQL*Plus或其他Oracle客户端执行
+sqlplus username/password@database @oracle_source_db.sql
+sqlplus username/password@database @oracle_target_db.sql
+
+# 运行比较
+java -jar db-compare-tool.jar \
+  --source-url "jdbc:oracle:thin:@localhost:1521:xe" \
+  --source-user source_user \
+  --source-password password \
+  --target-url "jdbc:oracle:thin:@localhost:1521:xe" \
+  --target-user target_user \
+  --target-password password \
+  --output-file oracle_comparison_report.html \
+  --format html
 ```
 
-### 步骤3: 查看测试结果
+### 3. SQL Server
 
-测试完成后，结果将保存在 `test_results/` 目录中：
+```bash
+# 使用SQLCMD或SSMS执行
+sqlcmd -S localhost -E -i sqlserver_source_db.sql
+sqlcmd -S localhost -E -i sqlserver_target_db.sql
 
+# 运行比较
+java -jar db-compare-tool.jar \
+  --source-url "jdbc:sqlserver://localhost:1433;databaseName=ecommerce_source" \
+  --source-user sa \
+  --source-password password \
+  --target-url "jdbc:sqlserver://localhost:1433;databaseName=ecommerce_target" \
+  --target-user sa \
+  --target-password password \
+  --output-file sqlserver_comparison_report.html \
+  --format html
 ```
-test_results/
-├── full_comparison.txt                  # 完整比较结果
-├── tables_views_comparison.txt          # 表和视图比较结果
-├── no_index_constraint_comparison.txt   # 排除索引约束比较结果
-├── comparison_report.html               # HTML格式报告
-└── procedures_functions_comparison.txt  # 存储过程和函数比较结果
+
+### 4. PostgreSQL
+
+```bash
+# 创建数据库并执行脚本
+createdb ecommerce_source
+createdb ecommerce_target
+psql -d ecommerce_source -f postgresql_source_db.sql
+psql -d ecommerce_target -f postgresql_target_db.sql
+
+# 运行比较
+java -jar db-compare-tool.jar \
+  --source-url "jdbc:postgresql://localhost:5432/ecommerce_source" \
+  --source-user postgres \
+  --source-password password \
+  --target-url "jdbc:postgresql://localhost:5432/ecommerce_target" \
+  --target-user postgres \
+  --target-password password \
+  --output-file postgresql_comparison_report.html \
+  --format html
 ```
 
-## 📋 测试用例
+### 5. DM8 (达梦)
 
-测试脚本会执行以下5个测试用例：
+```bash
+# 使用DM管理工具或disql执行
+disql username/password@localhost:5236 @dm8_source_db.sql
+disql username/password@localhost:5236 @dm8_target_db.sql
 
-### 测试1: 完整比较
-- **目的**: 测试所有对象类型的比较
-- **参数**: 包含所有对象类型
-- **输出**: `full_comparison.txt`
+# 运行比较
+java -jar db-compare-tool.jar \
+  --source-url "jdbc:dm://localhost:5236" \
+  --source-user source_user \
+  --source-password password \
+  --target-url "jdbc:dm://localhost:5236" \
+  --target-user target_user \
+  --target-password password \
+  --output-file dm8_comparison_report.html \
+  --format html
+```
 
-### 测试2: 表和视图比较
-- **目的**: 测试特定对象类型过滤
-- **参数**: `--include-types TABLE,VIEW`
-- **输出**: `tables_views_comparison.txt`
+### 6. DB2
 
-### 测试3: 排除索引和约束
-- **目的**: 测试对象类型排除功能
-- **参数**: `--exclude-types INDEX,CONSTRAINT`
-- **输出**: `no_index_constraint_comparison.txt`
+```bash
+# 连接到DB2并执行脚本
+db2 connect to database
+db2 -td@ -f db2_source_db.sql
+db2 -td@ -f db2_target_db.sql
 
-### 测试4: HTML报告生成
-- **目的**: 测试HTML格式输出
-- **参数**: `--format HTML`
-- **输出**: `comparison_report.html`
+# 运行比较
+java -jar db-compare-tool.jar \
+  --source-url "jdbc:db2://localhost:50000/database" \
+  --source-user db2user \
+  --source-password password \
+  --target-url "jdbc:db2://localhost:50000/database" \
+  --target-user db2user \
+  --target-password password \
+  --output-file db2_comparison_report.html \
+  --format html
+```
 
-### 测试5: 存储过程和函数
-- **目的**: 测试代码对象比较
-- **参数**: `--include-types PROCEDURE,FUNCTION`
-- **输出**: `procedures_functions_comparison.txt`
+## 预期比较结果
 
-## 🎯 预期结果
+运行比较后，您应该看到以下类型的差异：
 
-根据测试数据设计，预期的比较结果应该包含：
+### 表差异
+- `users` 表：目标数据库有额外字段（birth_date, country）
+- `products` 表：目标数据库有额外字段（min_stock_level, brand, weight）
+- `orders` 表：目标数据库缺少字段（shipping_address, notes）
+- `source_only_table`：仅存在于源数据库
+- `customer_reviews`/`target_only_table`：仅存在于目标数据库
 
-### 统计摘要
-- **相同对象**: 约5-6个
-- **不同对象**: 约5-6个  
-- **仅源数据库**: 约5-6个
-- **仅目标数据库**: 约6-8个
+### 视图差异
+- `active_users`：定义略有不同（包含的字段不同）
+- `popular_products`/`target_only_view`：仅存在于目标数据库
+- `source_only_view`：仅存在于源数据库
 
-### 具体差异
-1. **表结构差异**: products, orders, categories表
-2. **视图逻辑差异**: order_summary视图
-3. **存储过程逻辑差异**: CreateOrder存储过程
-4. **函数实现差异**: CalculateOrderTotal函数
-5. **触发器逻辑差异**: orders_audit触发器
+### 存储过程差异
+- `GetUserById`：参数或实现略有不同
+- `CreateOrder`：增强版本在目标数据库中包含库存检查
+- `UpdateProductStock`/`TargetOnlyProcedure`：仅存在于目标数据库
+- `SourceOnlyProcedure`：仅存在于源数据库
 
-## 🛠️ 自定义测试
+### 函数差异
+- `GetDiscountedPrice`：默认折扣率不同（0.1 vs 0.15）
+- `GetProductAverageRating`/`TargetOnlyFunction`：仅存在于目标数据库
+- `SourceOnlyFunction`：仅存在于源数据库
 
-### 修改数据库连接
-测试脚本支持自定义数据库连接参数：
-- 主机地址
-- 端口号
-- 用户名
-- 密码
+### 索引差异
+- 不同的索引组合和配置
+- 某些索引仅存在于特定数据库中
 
-### 添加测试数据
-可以通过修改SQL脚本来添加更多测试数据：
-1. 在 `source_db.sql` 或 `target_db.sql` 中添加新对象
-2. 重新执行脚本创建数据库
-3. 运行比较测试查看结果
-
-### 测试其他数据库类型
-虽然当前脚本专为MySQL设计，但可以根据需要创建其他数据库类型的测试脚本：
-- Oracle
-- SQL Server
-- PostgreSQL
-- DB2
-- DM8
-
-## 🐛 故障排除
+## 故障排除
 
 ### 常见问题
 
 1. **连接失败**
-   - 检查MySQL服务是否启动
-   - 验证用户名和密码
-   - 确认主机地址和端口
+   - 检查数据库服务是否运行
+   - 验证连接字符串格式
+   - 确认用户权限
 
-2. **权限不足**
-   - 确保数据库用户有CREATE权限
-   - 确保有SELECT权限读取INFORMATION_SCHEMA
+2. **SQL执行错误**
+   - 检查数据库版本兼容性
+   - 确认语法是否符合特定数据库要求
+   - 验证用户是否有创建对象的权限
 
-3. **JAR文件不存在**
-   - 执行 `mvn package` 构建项目
-   - 检查相对路径是否正确
+3. **编码问题**
+   - 确保数据库和客户端使用UTF-8编码
+   - 检查中文字符是否正确显示
 
-4. **脚本执行权限**（Linux/Mac）
-   - 执行 `chmod +x run_comparison_test.sh`
+### 数据库特定注意事项
 
-### 日志查看
-- 应用日志保存在 `logs/` 目录
-- 详细错误信息会显示在控制台
+#### Oracle
+- 确保用户有足够的表空间配额
+- 可能需要设置 `RECYCLEBIN` 为 OFF
 
-## 📝 测试验证清单
+#### SQL Server
+- 确保数据库排序规则支持中文
+- 可能需要启用 `SQLCMD` 模式
 
-运行测试后，请验证以下内容：
+#### PostgreSQL
+- 确保数据库编码为 UTF-8
+- 可能需要安装 `plpgsql` 扩展
 
-- [ ] 源数据库和目标数据库创建成功
-- [ ] 5个测试用例全部执行完成
-- [ ] 生成了所有预期的输出文件
-- [ ] 比较结果包含相同、不同和独有对象
-- [ ] HTML报告格式正确且可打开
-- [ ] 中文日志输出正常显示
+#### DM8
+- 确保 DM8 版本支持所有使用的功能
+- 检查字符集配置
 
-通过这些全面的测试脚本，您可以验证数据库比较工具的各项功能是否正常工作。 
+#### DB2
+- 设置正确的语句终止符 `@`
+- 可能需要增加表空间大小
+
+## 性能测试
+
+这些脚本创建的对象数量适合测试比较工具的性能：
+
+- **小规模测试**：5-6个表，20+个对象
+- **中等规模**：可以通过复制脚本创建更多对象
+- **大规模测试**：建议使用数据生成脚本创建数百个对象
+
+## 扩展测试
+
+### 添加更多测试数据
+
+```sql
+-- 可以在脚本末尾添加更多测试数据
+INSERT INTO categories (name, description) VALUES 
+('家电', '家用电器'),
+('运动', '运动用品'),
+('美妆', '化妆品');
+
+-- 添加更多产品和订单数据
+```
+
+### 自定义测试场景
+
+1. **模式变更测试** - 修改表结构测试DDL差异检测
+2. **数据差异测试** - 添加不同的测试数据
+3. **权限测试** - 测试不同用户权限下的比较
+4. **大数据量测试** - 创建包含大量对象的数据库
+
+## 贡献
+
+如果您发现脚本中的问题或希望添加新的测试场景，请：
+
+1. 创建 Issue 描述问题
+2. 提交 Pull Request 包含修复
+3. 添加相应的文档说明
+
+## 许可证
+
+这些测试脚本与主项目使用相同的许可证。 
