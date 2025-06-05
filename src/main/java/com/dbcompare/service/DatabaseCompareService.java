@@ -30,12 +30,12 @@ public class DatabaseCompareService {
         
         // Initialize all database extractors
         extractorMap.put("MYSQL", new MySQLMetadataExtractor());
+        extractorMap.put("DM8", new DM8MetadataExtractor());
         // TODO: Add other database extractors
         // extractorMap.put("ORACLE", new OracleMetadataExtractor());
         // extractorMap.put("SQLSERVER", new SQLServerMetadataExtractor());
         // extractorMap.put("POSTGRESQL", new PostgreSQLMetadataExtractor());
         // extractorMap.put("DB2", new DB2MetadataExtractor());
-        // extractorMap.put("DM8", new DM8MetadataExtractor());
         
         return extractorMap;
     }
