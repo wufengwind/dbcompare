@@ -96,7 +96,6 @@ public class VersionInfo {
         System.out.println("软件作者: " + AUTHOR);
         System.out.println("哈希签名: " + gitCommit);
         System.out.println("构建时间: " + buildTime);
-        System.out.println("编译工具：Java " + javaVersion);
         System.out.println("***************************************************");
     }
 } 
