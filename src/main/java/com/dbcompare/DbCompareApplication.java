@@ -98,7 +98,7 @@ public class DbCompareApplication implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         try {
-            logger.info("Starting database comparison...");
+            logger.info("开始数据库比较...");
             
             // Create database configurations
             DatabaseConfig sourceConfig = new DatabaseConfig(
@@ -114,11 +114,11 @@ public class DbCompareApplication implements Callable<Integer> {
                                  includeTypes, excludeTypes, 
                                  outputFile, outputFormat, verbose);
 
-            logger.info("Database comparison completed successfully!");
+            logger.info("数据库比较成功完成！");
             return 0;
 
         } catch (Exception e) {
-            logger.error("Error during database comparison: {}", e.getMessage(), e);
+            logger.error("数据库比较过程中发生错误: {}", e.getMessage(), e);
             return 1;
         }
     }

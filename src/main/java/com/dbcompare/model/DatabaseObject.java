@@ -87,6 +87,10 @@ public class DatabaseObject {
         return type + ":" + getFullName();
     }
 
+    public String getObjectKeyWithoutSchema() {
+        return type + ":" + name;
+    }
+
     @Override
     public String toString() {
         return String.format("DatabaseObject{schema='%s', name='%s', type=%s}", 

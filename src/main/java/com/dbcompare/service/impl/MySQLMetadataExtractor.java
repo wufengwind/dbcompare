@@ -60,7 +60,7 @@ public class MySQLMetadataExtractor implements DatabaseMetadataExtractor {
                 objects.addAll(extractIndexes(connection, schema));
                 break;
             default:
-                logger.warn("Object type {} not supported for MySQL", type);
+                logger.warn("MySQL不支持对象类型 {}", type);
         }
         
         return objects;
@@ -186,7 +186,10 @@ public class MySQLMetadataExtractor implements DatabaseMetadataExtractor {
                 while (rs.next()) {
                     DatabaseObject index = new DatabaseObject();
                     index.setSchema(schema);
-                    index.setName(rs.getString("INDEX_NAME"));
+                    // 使用 "表名.索引名" 的格式来确保唯一性
+                    String tableName = rs.getString("TABLE_NAME");
+                    String indexName = rs.getString("INDEX_NAME");
+                    index.setName(tableName + "." + indexName);
                     index.setType(DatabaseObjectType.INDEX);
                     indexes.add(index);
                 }
@@ -273,7 +276,7 @@ public class MySQLMetadataExtractor implements DatabaseMetadataExtractor {
         try (Connection connection = getConnection(config)) {
             return connection.isValid(5);
         } catch (SQLException e) {
-            logger.error("Connection test failed: {}", e.getMessage());
+            logger.error("连接测试失败: {}", e.getMessage());
             return false;
         }
     }

@@ -47,7 +47,7 @@ public class DatabaseCompareService {
                        String[] includeTypes, String[] excludeTypes,
                        String outputFile, String outputFormat, boolean verbose) throws Exception {
         
-        logger.info("Starting database comparison between {} and {}", 
+        logger.info("开始比较数据库 {} 和 {}", 
                    sourceConfig.getType(), targetConfig.getType());
 
         // Validate database configurations
@@ -57,24 +57,24 @@ public class DatabaseCompareService {
         Set<DatabaseObjectType> objectTypes = determineObjectTypes(includeTypes, excludeTypes);
         
         // Extract objects from both databases
-        logger.info("Extracting objects from source database...");
+        logger.info("从源数据库提取对象...");
         List<DatabaseObject> sourceObjects = extractObjects(sourceConfig, objectTypes);
         
-        logger.info("Extracting objects from target database...");
+        logger.info("从目标数据库提取对象...");
         List<DatabaseObject> targetObjects = extractObjects(targetConfig, objectTypes);
         
         // Extract DDL for all objects
-        logger.info("Extracting DDL definitions...");
+        logger.info("提取DDL定义...");
         enrichWithDDL(sourceConfig, sourceObjects);
         enrichWithDDL(targetConfig, targetObjects);
         
         // Perform comparison
-        logger.info("Comparing database objects...");
+        logger.info("比较数据库对象...");
         ComparisonResult result = performComparison(sourceObjects, targetObjects, 
                                                    sourceConfig, targetConfig);
         
         // Generate and save report
-        logger.info("Generating comparison report...");
+        logger.info("生成比较报告...");
         generateReport(result, outputFile, outputFormat, verbose);
         
         // Print summary
@@ -88,14 +88,14 @@ public class DatabaseCompareService {
         DatabaseMetadataExtractor targetExtractor = getExtractor(targetConfig.getType());
         
         if (!sourceExtractor.testConnection(sourceConfig)) {
-            throw new Exception("Cannot connect to source database: " + sourceConfig);
+            throw new Exception("无法连接到源数据库: " + sourceConfig);
         }
         
         if (!targetExtractor.testConnection(targetConfig)) {
-            throw new Exception("Cannot connect to target database: " + targetConfig);
+            throw new Exception("无法连接到目标数据库: " + targetConfig);
         }
         
-        logger.info("Database connections validated successfully");
+        logger.info("数据库连接验证成功");
     }
 
     private Set<DatabaseObjectType> determineObjectTypes(String[] includeTypes, String[] excludeTypes) {
@@ -107,7 +107,7 @@ public class DatabaseCompareService {
                 try {
                     objectTypes.add(DatabaseObjectType.fromString(type.trim()));
                 } catch (IllegalArgumentException e) {
-                    logger.warn("Unknown object type: {}", type);
+                    logger.warn("未知的对象类型: {}", type);
                 }
             }
         } else {
@@ -121,12 +121,12 @@ public class DatabaseCompareService {
                 try {
                     objectTypes.remove(DatabaseObjectType.fromString(type.trim()));
                 } catch (IllegalArgumentException e) {
-                    logger.warn("Unknown object type: {}", type);
+                    logger.warn("未知的对象类型: {}", type);
                 }
             }
         }
         
-        logger.info("Comparing object types: {}", objectTypes);
+        logger.info("比较对象类型: {}", objectTypes);
         return objectTypes;
     }
 
@@ -144,7 +144,7 @@ public class DatabaseCompareService {
                 String ddl = extractor.getDDL(config, object);
                 object.setDdl(ddl);
             } catch (SQLException e) {
-                logger.warn("Failed to get DDL for {}: {}", object.getObjectKey(), e.getMessage());
+                logger.warn("获取DDL失败 {}: {}", object.getObjectKey(), e.getMessage());
                 object.setDdl("");
             }
         }
@@ -160,45 +160,107 @@ public class DatabaseCompareService {
         result.setTargetDatabase(targetConfig.toString());
         
         // Create maps for quick lookup
-        Map<String, DatabaseObject> sourceMap = sourceObjects.stream()
-                .collect(Collectors.toMap(DatabaseObject::getObjectKey, obj -> obj));
-        Map<String, DatabaseObject> targetMap = targetObjects.stream()
-                .collect(Collectors.toMap(DatabaseObject::getObjectKey, obj -> obj));
+        Map<String, DatabaseObject> sourceMap = new HashMap<>();
+        Map<String, DatabaseObject> targetMap = new HashMap<>();
+        
+        // Build source map with duplicate key handling
+        for (DatabaseObject obj : sourceObjects) {
+            String key = obj.getObjectKey();
+            if (sourceMap.containsKey(key)) {
+                logger.warn("源数据库中发现重复的对象键: {} - 第一个对象: {}, 第二个对象: {}", 
+                           key, sourceMap.get(key), obj);
+                // 使用更具体的键
+                key = key + "_" + System.identityHashCode(obj);
+            }
+            sourceMap.put(key, obj);
+        }
+        
+        // Build target map with duplicate key handling
+        for (DatabaseObject obj : targetObjects) {
+            String key = obj.getObjectKey();
+            if (targetMap.containsKey(key)) {
+                logger.warn("目标数据库中发现重复的对象键: {} - 第一个对象: {}, 第二个对象: {}", 
+                           key, targetMap.get(key), obj);
+                // 使用更具体的键
+                key = key + "_" + System.identityHashCode(obj);
+            }
+            targetMap.put(key, obj);
+        }
         
         // Count objects by type
         result.setSourceObjectCounts(countObjectsByType(sourceObjects));
         result.setTargetObjectCounts(countObjectsByType(targetObjects));
         
-        // Find objects that exist only in source
-        for (DatabaseObject sourceObj : sourceObjects) {
-            if (!targetMap.containsKey(sourceObj.getObjectKey())) {
-                result.getSourceOnlyObjects().add(sourceObj);
-            }
+        System.out.println("\n=== 详细比较过程 ===");
+        
+        // Create maps for cross-schema comparison using object name without schema
+        Map<String, DatabaseObject> sourceByNameMap = new HashMap<>();
+        Map<String, DatabaseObject> targetByNameMap = new HashMap<>();
+        
+        for (DatabaseObject obj : sourceObjects) {
+            String nameKey = obj.getObjectKeyWithoutSchema();
+            sourceByNameMap.put(nameKey, obj);
         }
         
-        // Find objects that exist only in target
-        for (DatabaseObject targetObj : targetObjects) {
-            if (!sourceMap.containsKey(targetObj.getObjectKey())) {
-                result.getTargetOnlyObjects().add(targetObj);
+        for (DatabaseObject obj : targetObjects) {
+            String nameKey = obj.getObjectKeyWithoutSchema();
+            targetByNameMap.put(nameKey, obj);
+        }
+        
+        // Find objects that exist only in source
+        System.out.println("\n1. 检查仅存在于源数据库的对象...");
+        for (DatabaseObject sourceObj : sourceObjects) {
+            String nameKey = sourceObj.getObjectKeyWithoutSchema();
+            if (!targetByNameMap.containsKey(nameKey)) {
+                result.getSourceOnlyObjects().add(sourceObj);
+                System.out.println("   [仅源] " + sourceObj.getObjectKey());
             }
+        }
+        if (result.getSourceOnlyObjects().isEmpty()) {
+            System.out.println("   没有发现仅存在于源数据库的对象");
+        }
+        
+        // Find objects that exist only in target  
+        System.out.println("\n2. 检查仅存在于目标数据库的对象...");
+        for (DatabaseObject targetObj : targetObjects) {
+            String nameKey = targetObj.getObjectKeyWithoutSchema();
+            if (!sourceByNameMap.containsKey(nameKey)) {
+                result.getTargetOnlyObjects().add(targetObj);
+                System.out.println("   [仅目标] " + targetObj.getObjectKey());
+            }
+        }
+        if (result.getTargetOnlyObjects().isEmpty()) {
+            System.out.println("   没有发现仅存在于目标数据库的对象");
         }
         
         // Compare objects that exist in both databases
+        System.out.println("\n3. 比较两个数据库中都存在的对象...");
+        int comparedCount = 0;
         for (DatabaseObject sourceObj : sourceObjects) {
-            DatabaseObject targetObj = targetMap.get(sourceObj.getObjectKey());
+            String nameKey = sourceObj.getObjectKeyWithoutSchema();
+            DatabaseObject targetObj = targetByNameMap.get(nameKey);
+            
             if (targetObj != null) {
+                comparedCount++;
                 if (areDDLsEqual(sourceObj.getDdl(), targetObj.getDdl())) {
                     result.getIdenticalObjects().add(sourceObj);
+                    System.out.println("   [相同] " + nameKey + " (" + sourceObj.getFullName() + " <-> " + targetObj.getFullName() + ")");
                 } else {
                     result.getDifferentObjects().add(sourceObj);
+                    System.out.println("   [不同] " + nameKey + " (" + sourceObj.getFullName() + " <-> " + targetObj.getFullName() + ") - DDL结构存在差异");
                     
                     // Create difference record
                     ComparisonResult.ObjectDifference diff = new ComparisonResult.ObjectDifference(
-                            sourceObj, targetObj, "DDL_DIFFERENT", "DDL structures are different");
+                            sourceObj, targetObj, "DDL_DIFFERENT", "DDL结构不同");
                     result.getDifferences().add(diff);
                 }
             }
         }
+        if (comparedCount == 0) {
+            System.out.println("   没有发现两个数据库中都存在的对象");
+        }
+        
+        System.out.println("\n=== 比较详情完成 ===");
         
         return result;
     }
@@ -228,40 +290,40 @@ public class DatabaseCompareService {
     private DatabaseMetadataExtractor getExtractor(String databaseType) {
         DatabaseMetadataExtractor extractor = extractors.get(databaseType.toUpperCase());
         if (extractor == null) {
-            throw new IllegalArgumentException("Unsupported database type: " + databaseType);
+            throw new IllegalArgumentException("不支持的数据库类型: " + databaseType);
         }
         return extractor;
     }
 
     private void printSummary(ComparisonResult result) {
-        System.out.println("\n=== Database Comparison Summary ===");
-        System.out.println("Comparison Time: " + result.getComparisonTime());
-        System.out.println("Source Database: " + result.getSourceDatabase());
-        System.out.println("Target Database: " + result.getTargetDatabase());
+        System.out.println("\n=== 数据库比较摘要 ===");
+        System.out.println("比较时间: " + result.getComparisonTime());
+        System.out.println("源数据库: " + result.getSourceDatabase());
+        System.out.println("目标数据库: " + result.getTargetDatabase());
         System.out.println();
         
-        System.out.println("Object Counts:");
+        System.out.println("对象统计:");
         for (DatabaseObjectType type : DatabaseObjectType.values()) {
             int sourceCount = result.getSourceObjectCounts().getOrDefault(type, 0);
             int targetCount = result.getTargetObjectCounts().getOrDefault(type, 0);
             if (sourceCount > 0 || targetCount > 0) {
-                System.out.printf("  %-12s: Source=%d, Target=%d%n", 
+                System.out.printf("  %-12s: 源=%d, 目标=%d%n", 
                                 type, sourceCount, targetCount);
             }
         }
         
         System.out.println();
-        System.out.println("Comparison Results:");
-        System.out.println("  Identical Objects: " + result.getIdenticalObjects().size());
-        System.out.println("  Different Objects: " + result.getDifferentObjects().size());
-        System.out.println("  Source Only: " + result.getSourceOnlyObjects().size());
-        System.out.println("  Target Only: " + result.getTargetOnlyObjects().size());
-        System.out.println("  Total Differences: " + result.getTotalDifferences());
+        System.out.println("比较结果:");
+        System.out.println("  相同对象: " + result.getIdenticalObjects().size());
+        System.out.println("  不同对象: " + result.getDifferentObjects().size());
+        System.out.println("  仅源数据库: " + result.getSourceOnlyObjects().size());
+        System.out.println("  仅目标数据库: " + result.getTargetOnlyObjects().size());
+        System.out.println("  总差异数: " + result.getTotalDifferences());
         
         if (result.hasDifferences()) {
-            System.out.println("\nDatabases have differences!");
+            System.out.println("\n数据库存在差异！");
         } else {
-            System.out.println("\nDatabases are identical!");
+            System.out.println("\n数据库完全相同！");
         }
     }
 
@@ -286,32 +348,32 @@ public class DatabaseCompareService {
                 } else {
                     generateTextReport(result, outputFile, verbose);
                 }
-                logger.info("Report saved to: {}", outputFile);
+                logger.info("报告已保存到: {}", outputFile);
             }
         } catch (Exception e) {
-            logger.error("Failed to generate report: {}", e.getMessage(), e);
+            logger.error("生成报告失败: {}", e.getMessage(), e);
         }
     }
 
     private void generateTextReport(ComparisonResult result, String outputFile, boolean verbose) {
         // For now, just create a simple text report
         try (java.io.PrintWriter writer = new java.io.PrintWriter(outputFile)) {
-            writer.println("=== Database Comparison Report ===");
-            writer.println("Generated at: " + result.getComparisonTime());
-            writer.println("Source: " + result.getSourceDatabase());
-            writer.println("Target: " + result.getTargetDatabase());
+            writer.println("=== 数据库比较报告 ===");
+            writer.println("生成时间: " + result.getComparisonTime());
+            writer.println("源数据库: " + result.getSourceDatabase());
+            writer.println("目标数据库: " + result.getTargetDatabase());
             writer.println();
             
-            writer.println("Summary:");
-            writer.println("- Identical Objects: " + result.getIdenticalObjects().size());
-            writer.println("- Different Objects: " + result.getDifferentObjects().size());
-            writer.println("- Source Only Objects: " + result.getSourceOnlyObjects().size());
-            writer.println("- Target Only Objects: " + result.getTargetOnlyObjects().size());
+            writer.println("摘要:");
+            writer.println("- 相同对象: " + result.getIdenticalObjects().size());
+            writer.println("- 不同对象: " + result.getDifferentObjects().size());
+            writer.println("- 仅源数据库对象: " + result.getSourceOnlyObjects().size());
+            writer.println("- 仅目标数据库对象: " + result.getTargetOnlyObjects().size());
             writer.println();
             
             if (verbose) {
                 if (!result.getSourceOnlyObjects().isEmpty()) {
-                    writer.println("Objects only in source:");
+                    writer.println("仅存在于源数据库的对象:");
                     for (DatabaseObject obj : result.getSourceOnlyObjects()) {
                         writer.println("  " + obj.getObjectKey());
                     }
@@ -319,7 +381,7 @@ public class DatabaseCompareService {
                 }
                 
                 if (!result.getTargetOnlyObjects().isEmpty()) {
-                    writer.println("Objects only in target:");
+                    writer.println("仅存在于目标数据库的对象:");
                     for (DatabaseObject obj : result.getTargetOnlyObjects()) {
                         writer.println("  " + obj.getObjectKey());
                     }
@@ -327,7 +389,7 @@ public class DatabaseCompareService {
                 }
                 
                 if (!result.getDifferentObjects().isEmpty()) {
-                    writer.println("Objects with different DDL:");
+                    writer.println("DDL不同的对象:");
                     for (DatabaseObject obj : result.getDifferentObjects()) {
                         writer.println("  " + obj.getObjectKey());
                     }
@@ -335,13 +397,13 @@ public class DatabaseCompareService {
             }
             
         } catch (java.io.IOException e) {
-            logger.error("Failed to write text report: {}", e.getMessage());
+            logger.error("写入文本报告失败: {}", e.getMessage());
         }
     }
 
     private void generateJsonReport(ComparisonResult result, String outputFile, boolean verbose) {
         // Simple JSON generation - in a real implementation, you'd use Jackson
-        logger.info("JSON report generation not fully implemented yet. Using text format.");
+        logger.info("JSON报告生成功能尚未完全实现。使用文本格式。");
         generateTextReport(result, outputFile.replace(".json", ".txt"), verbose);
     }
 
@@ -349,28 +411,28 @@ public class DatabaseCompareService {
         // Simple HTML generation
         try (java.io.PrintWriter writer = new java.io.PrintWriter(outputFile)) {
             writer.println("<!DOCTYPE html>");
-            writer.println("<html><head><title>Database Comparison Report</title>");
+            writer.println("<html><head><title>数据库比较报告</title>");
             writer.println("<style>body{font-family:Arial,sans-serif;margin:20px;}");
             writer.println("table{border-collapse:collapse;width:100%;}");
             writer.println("th,td{border:1px solid #ddd;padding:8px;text-align:left;}");
             writer.println("th{background-color:#f2f2f2;}</style></head><body>");
             
-            writer.println("<h1>Database Comparison Report</h1>");
-            writer.println("<p><strong>Generated:</strong> " + result.getComparisonTime() + "</p>");
-            writer.println("<p><strong>Source:</strong> " + result.getSourceDatabase() + "</p>");
-            writer.println("<p><strong>Target:</strong> " + result.getTargetDatabase() + "</p>");
+            writer.println("<h1>数据库比较报告</h1>");
+            writer.println("<p><strong>生成时间:</strong> " + result.getComparisonTime() + "</p>");
+            writer.println("<p><strong>源数据库:</strong> " + result.getSourceDatabase() + "</p>");
+            writer.println("<p><strong>目标数据库:</strong> " + result.getTargetDatabase() + "</p>");
             
-            writer.println("<h2>Summary</h2>");
+            writer.println("<h2>摘要</h2>");
             writer.println("<ul>");
-            writer.println("<li>Identical Objects: " + result.getIdenticalObjects().size() + "</li>");
-            writer.println("<li>Different Objects: " + result.getDifferentObjects().size() + "</li>");
-            writer.println("<li>Source Only Objects: " + result.getSourceOnlyObjects().size() + "</li>");
-            writer.println("<li>Target Only Objects: " + result.getTargetOnlyObjects().size() + "</li>");
+            writer.println("<li>相同对象: " + result.getIdenticalObjects().size() + "</li>");
+            writer.println("<li>不同对象: " + result.getDifferentObjects().size() + "</li>");
+            writer.println("<li>仅源数据库对象: " + result.getSourceOnlyObjects().size() + "</li>");
+            writer.println("<li>仅目标数据库对象: " + result.getTargetOnlyObjects().size() + "</li>");
             writer.println("</ul>");
             
             if (verbose) {
                 if (!result.getSourceOnlyObjects().isEmpty()) {
-                    writer.println("<h3>Objects Only in Source</h3><ul>");
+                    writer.println("<h3>仅存在于源数据库的对象</h3><ul>");
                     for (DatabaseObject obj : result.getSourceOnlyObjects()) {
                         writer.println("<li>" + obj.getObjectKey() + "</li>");
                     }
@@ -378,7 +440,7 @@ public class DatabaseCompareService {
                 }
                 
                 if (!result.getTargetOnlyObjects().isEmpty()) {
-                    writer.println("<h3>Objects Only in Target</h3><ul>");
+                    writer.println("<h3>仅存在于目标数据库的对象</h3><ul>");
                     for (DatabaseObject obj : result.getTargetOnlyObjects()) {
                         writer.println("<li>" + obj.getObjectKey() + "</li>");
                     }
@@ -386,7 +448,7 @@ public class DatabaseCompareService {
                 }
                 
                 if (!result.getDifferentObjects().isEmpty()) {
-                    writer.println("<h3>Objects with Different DDL</h3><ul>");
+                    writer.println("<h3>DDL不同的对象</h3><ul>");
                     for (DatabaseObject obj : result.getDifferentObjects()) {
                         writer.println("<li>" + obj.getObjectKey() + "</li>");
                     }
@@ -397,7 +459,7 @@ public class DatabaseCompareService {
             writer.println("</body></html>");
             
         } catch (java.io.IOException e) {
-            logger.error("Failed to write HTML report: {}", e.getMessage());
+            logger.error("写入HTML报告失败: {}", e.getMessage());
         }
     }
 } 
