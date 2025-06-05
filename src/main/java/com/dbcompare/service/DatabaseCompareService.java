@@ -465,6 +465,17 @@ public class DatabaseCompareService {
             writer.println(".object-details{margin:20px 0;border:1px solid #dee2e6;border-radius:5px;}");
             writer.println(".object-header{background-color:#f1f3f4;padding:10px;font-weight:bold;border-bottom:1px solid #dee2e6;}");
             writer.println(".object-content{padding:15px;}");
+            writer.println(".ddl-comparison{display:flex;gap:20px;margin:15px 0;}");
+            writer.println(".ddl-side{flex:1;border:1px solid #e9ecef;border-radius:5px;}");
+            writer.println(".ddl-header{padding:10px;font-weight:bold;border-bottom:1px solid #e9ecef;}");
+            writer.println(".source-header{background-color:#fff3cd;border-color:#ffc107;}");
+            writer.println(".target-header{background-color:#d1ecf1;border-color:#17a2b8;}");
+            writer.println(".ddl-content{padding:10px;font-family:monospace;white-space:pre-wrap;line-height:1.4;max-height:400px;overflow-y:auto;}");
+            writer.println(".diff-line{margin:0;padding:2px 5px;}");
+            writer.println(".diff-added{background-color:#d4edda;border-left:3px solid #28a745;}");
+            writer.println(".diff-removed{background-color:#f8d7da;border-left:3px solid #dc3545;}");
+            writer.println(".diff-changed{background-color:#fff3cd;border-left:3px solid #ffc107;}");
+            writer.println(".diff-same{background-color:#f8f9fa;}");
             writer.println("</style></head><body>");
             
             writer.println("<h1>🔍 数据库结构比较报告</h1>");
@@ -517,21 +528,28 @@ public class DatabaseCompareService {
                         writer.println("</div>");
                         writer.println("<div class='object-content'>");
                         
-                        writer.println("<h4>📤 源数据库 DDL (" + sourceObj.getFullName() + ")</h4>");
                         String sourceDDL = sourceObj.getDdl();
-                        if (sourceDDL != null && !sourceDDL.trim().isEmpty()) {
-                            writer.println("<div class='ddl-block'>" + escapeHtml(sourceDDL) + "</div>");
-                        } else {
-                            writer.println("<div class='ddl-block' style='color:#999;'>DDL内容为空或未提取</div>");
-                        }
-                        
-                        writer.println("<h4>📥 目标数据库 DDL (" + targetObj.getFullName() + ")</h4>");
                         String targetDDL = targetObj.getDdl();
-                        if (targetDDL != null && !targetDDL.trim().isEmpty()) {
-                            writer.println("<div class='ddl-block'>" + escapeHtml(targetDDL) + "</div>");
-                        } else {
-                            writer.println("<div class='ddl-block' style='color:#999;'>DDL内容为空或未提取</div>");
-                        }
+                        
+                        // 生成并排DDL比较
+                        writer.println("<h4>🔄 DDL结构对比</h4>");
+                        writer.println("<div style='margin:10px 0;padding:10px;background:#f8f9fa;border-radius:3px;font-size:0.9em;'>");
+                        writer.println("<strong>颜色说明：</strong> ");
+                        writer.println("<span style='background:#d4edda;padding:2px 5px;margin:0 5px;border-radius:2px;'>✅ 相同内容</span> ");
+                        writer.println("<span style='background:#f8d7da;padding:2px 5px;margin:0 5px;border-radius:2px;'>❌ 删除/缺失</span> ");
+                        writer.println("<span style='background:#d4edda;padding:2px 5px;margin:0 5px;border-radius:2px;'>➕ 新增</span> ");
+                        writer.println("<span style='background:#fff3cd;padding:2px 5px;margin:0 5px;border-radius:2px;'>🔄 修改</span>");
+                        writer.println("</div>");
+                        writer.println("<div class='ddl-comparison'>");
+                        writer.println("<div class='ddl-side'>");
+                        writer.println("<div class='ddl-header source-header'>📤 源数据库 (" + sourceObj.getFullName() + ")</div>");
+                        generateDDLWithDiff(writer, sourceDDL, targetDDL, true);
+                        writer.println("</div>");
+                        writer.println("<div class='ddl-side'>");
+                        writer.println("<div class='ddl-header target-header'>📥 目标数据库 (" + targetObj.getFullName() + ")</div>");
+                        generateDDLWithDiff(writer, targetDDL, sourceDDL, false);
+                        writer.println("</div>");
+                        writer.println("</div>");
                         
                         // 显示差异原因
                         writer.println("<h4>🔍 差异说明</h4>");
@@ -610,5 +628,76 @@ public class DatabaseCompareService {
                    .replace(">", "&gt;")
                    .replace("\"", "&quot;")
                    .replace("'", "&#x27;");
+    }
+    
+    private void generateDDLWithDiff(java.io.PrintWriter writer, String thisDDL, String otherDDL, boolean isSource) {
+        writer.println("<div class='ddl-content'>");
+        
+        if (thisDDL == null || thisDDL.trim().isEmpty()) {
+            writer.println("<div class='diff-line diff-removed'>DDL内容为空或未提取</div>");
+            writer.println("</div>");
+            return;
+        }
+        
+        if (otherDDL == null || otherDDL.trim().isEmpty()) {
+            writer.println("<div class='diff-line diff-added'>" + escapeHtml(thisDDL) + "</div>");
+            writer.println("</div>");
+            return;
+        }
+        
+        // 简单的逐行比较
+        String[] thisLines = thisDDL.split("\\r?\\n");
+        String[] otherLines = otherDDL.split("\\r?\\n");
+        
+        java.util.Set<String> otherLineSet = new java.util.HashSet<>();
+        for (String line : otherLines) {
+            otherLineSet.add(line.trim());
+        }
+        
+        for (String line : thisLines) {
+            String trimmedLine = line.trim();
+            if (trimmedLine.isEmpty()) {
+                writer.println("<div class='diff-line diff-same'>" + escapeHtml(line) + "</div>");
+            } else if (otherLineSet.contains(trimmedLine)) {
+                writer.println("<div class='diff-line diff-same'>" + escapeHtml(line) + "</div>");
+            } else {
+                // 检查是否是部分匹配（可能是修改）
+                boolean isPartialMatch = false;
+                for (String otherLine : otherLines) {
+                    if (isPartialMatch(trimmedLine, otherLine.trim())) {
+                        writer.println("<div class='diff-line diff-changed'>" + escapeHtml(line) + "</div>");
+                        isPartialMatch = true;
+                        break;
+                    }
+                }
+                if (!isPartialMatch) {
+                    String diffClass = isSource ? "diff-removed" : "diff-added";
+                    writer.println("<div class='diff-line " + diffClass + "'>" + escapeHtml(line) + "</div>");
+                }
+            }
+        }
+        
+        writer.println("</div>");
+    }
+    
+    private boolean isPartialMatch(String line1, String line2) {
+        if (line1.isEmpty() || line2.isEmpty()) return false;
+        
+        // 简单的相似度检查 - 如果包含相同的关键词或者长度相近
+        String[] words1 = line1.toLowerCase().split("\\s+");
+        String[] words2 = line2.toLowerCase().split("\\s+");
+        
+        int commonWords = 0;
+        for (String word1 : words1) {
+            for (String word2 : words2) {
+                if (word1.equals(word2) && word1.length() > 2) { // 忽略短词
+                    commonWords++;
+                    break;
+                }
+            }
+        }
+        
+        // 如果有超过30%的公共词汇，认为是部分匹配
+        return commonWords > 0 && commonWords >= Math.min(words1.length, words2.length) * 0.3;
     }
 } 
