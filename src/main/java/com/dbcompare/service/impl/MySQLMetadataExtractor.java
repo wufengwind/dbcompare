@@ -213,6 +213,8 @@ public class MySQLMetadataExtractor implements DatabaseMetadataExtractor {
                     return getRoutineDDL(connection, object, "FUNCTION");
                 case TRIGGER:
                     return getTriggerDDL(connection, object);
+                case INDEX:
+                    return getIndexDDL(connection, object);
                 default:
                     return "";
             }
@@ -269,6 +271,72 @@ public class MySQLMetadataExtractor implements DatabaseMetadataExtractor {
         }
         
         return "";
+    }
+
+    private String getIndexDDL(Connection connection, DatabaseObject index) throws SQLException {
+        StringBuilder ddl = new StringBuilder();
+        String[] parts = index.getName().split("\\.", 2);
+        if (parts.length == 2) {
+            String tableName = parts[0];
+            String indexName = parts[1];
+            
+            // Get index information from INFORMATION_SCHEMA.STATISTICS
+            String sql = "SELECT COLUMN_NAME, COLLATION, INDEX_TYPE, NON_UNIQUE " +
+                        "FROM INFORMATION_SCHEMA.STATISTICS " +
+                        "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ? " +
+                        "ORDER BY SEQ_IN_INDEX";
+            
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setString(1, index.getSchema());
+                stmt.setString(2, tableName);
+                stmt.setString(3, indexName);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    List<String> columns = new ArrayList<>();
+                    boolean isUnique = true;
+                    String indexType = "";
+                    
+                    while (rs.next()) {
+                        String columnName = rs.getString("COLUMN_NAME");
+                        String collation = rs.getString("COLLATION");
+                        indexType = rs.getString("INDEX_TYPE");
+                        boolean nonUnique = rs.getBoolean("NON_UNIQUE");
+                        
+                        if (nonUnique) {
+                            isUnique = false;
+                        }
+                        
+                        // Add column with direction if specified
+                        String columnDef = "`" + columnName + "`";
+                        if ("D".equals(collation)) {
+                            columnDef += " DESC";
+                        }
+                        columns.add(columnDef);
+                    }
+                    
+                    if (!columns.isEmpty()) {
+                        ddl.append("CREATE ");
+                        if (!isUnique) {
+                            // Non-unique index, use regular INDEX
+                        } else {
+                            ddl.append("UNIQUE ");
+                        }
+                        ddl.append("INDEX `").append(indexName).append("` ON `").append(tableName).append("`");
+                        ddl.append(" (").append(String.join(", ", columns)).append(")");
+                        
+                        if (indexType != null && !indexType.isEmpty() && !"BTREE".equals(indexType)) {
+                            ddl.append(" USING ").append(indexType);
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                logger.warn("无法获取索引 {} 的DDL: {}", index.getObjectKey(), e.getMessage());
+                ddl.append("-- 无法获取索引DDL: ").append(e.getMessage());
+            }
+        } else {
+            ddl.append("-- 索引名格式错误: ").append(index.getName());
+        }
+        
+        return ddl.toString();
     }
 
     @Override
