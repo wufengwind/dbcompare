@@ -2,6 +2,7 @@ package com.dbcompare;
 
 import com.dbcompare.config.DatabaseConfig;
 import com.dbcompare.service.DatabaseCompareService;
+import com.dbcompare.util.VersionInfo;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -91,6 +92,9 @@ public class DbCompareApplication implements Callable<Integer> {
     private boolean verbose;
 
     public static void main(String[] args) {
+        // 显示软件落款信息
+        VersionInfo.printBanner();
+        
         int exitCode = new CommandLine(new DbCompareApplication()).execute(args);
         System.exit(exitCode);
     }
@@ -99,6 +103,7 @@ public class DbCompareApplication implements Callable<Integer> {
     public Integer call() throws Exception {
         try {
             logger.info("开始数据库比较...");
+            logger.info("版本信息: {}", VersionInfo.getFullVersionInfo());
             
             // Create database configurations
             DatabaseConfig sourceConfig = new DatabaseConfig(

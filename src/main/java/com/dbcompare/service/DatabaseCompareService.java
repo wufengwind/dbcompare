@@ -5,6 +5,7 @@ import com.dbcompare.enums.DatabaseObjectType;
 import com.dbcompare.model.ComparisonResult;
 import com.dbcompare.model.DatabaseObject;
 import com.dbcompare.service.impl.*;
+import com.dbcompare.util.VersionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -412,6 +413,9 @@ public class DatabaseCompareService {
             writer.println("源数据库: " + result.getSourceDatabase());
             writer.println("目标数据库: " + result.getTargetDatabase());
             writer.println();
+            writer.println("软件信息: " + VersionInfo.getFullVersionInfo());
+            writer.println("版权信息: " + VersionInfo.getCopyrightInfo());
+            writer.println();
             
             writer.println("摘要:");
             writer.println("- 相同对象: " + result.getIdenticalObjects().size());
@@ -493,6 +497,14 @@ public class DatabaseCompareService {
             writer.println("</style></head><body>");
             
             writer.println("<h1>🔍 数据库结构比较报告</h1>");
+            
+            // 软件落款信息
+            writer.println("<div style='text-align:right;margin-bottom:20px;padding:10px;background:#f8f9fa;border-radius:5px;'>");
+            writer.println("<div style='font-size:0.9em;color:#6c757d;'>");
+            writer.println("<strong>" + escapeHtml(VersionInfo.getFullVersionInfo()) + "</strong><br/>");
+            writer.println(escapeHtml(VersionInfo.getCopyrightInfo()));
+            writer.println("</div>");
+            writer.println("</div>");
             
             writer.println("<div class='summary'>");
             writer.println("<h2>📊 比较概览</h2>");
