@@ -359,11 +359,26 @@ public class DatabaseCompareService {
     private String normalizeDDL(String ddl) {
         if (ddl == null) return "";
         
-        // Basic DDL normalization
-        return ddl.replaceAll("\\s+", " ")           // Replace multiple spaces with single space
-                  .replaceAll("\\r\\n|\\r|\\n", " ") // Replace line breaks with spaces
-                  .trim()                            // Remove leading/trailing spaces
-                  .toLowerCase();                    // Convert to lowercase for comparison
+        // Enhanced DDL normalization for cross-schema comparison
+        String normalized = ddl
+                .replaceAll("\\s+", " ")           // Replace multiple spaces with single space
+                .replaceAll("\\r\\n|\\r|\\n", " ") // Replace line breaks with spaces
+                .trim()                            // Remove leading/trailing spaces
+                .toLowerCase();                    // Convert to lowercase for comparison
+        
+        // Remove schema names from DDL to enable cross-schema comparison
+        // Handle different database-specific schema formats
+        normalized = normalized
+                // SQL Server: [schema].[table] -> [table]
+                .replaceAll("\\[\\w+\\]\\.\\[", "[")
+                // Oracle/DM8: "SCHEMA"."TABLE" -> "TABLE" 
+                .replaceAll("\"\\w+\"\\.\"", "\"")
+                // PostgreSQL: schema.table -> table
+                .replaceAll("\\b\\w+\\.(\\w+)", "$1")
+                // Generic: schema.object -> object (fallback)
+                .replaceAll("\\b[a-zA-Z_][a-zA-Z0-9_]*\\.", "");
+        
+        return normalized;
     }
 
     private void generateReport(ComparisonResult result, String outputFile, String outputFormat, boolean verbose) {

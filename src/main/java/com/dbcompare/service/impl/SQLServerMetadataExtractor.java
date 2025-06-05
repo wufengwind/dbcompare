@@ -235,7 +235,7 @@ public class SQLServerMetadataExtractor implements DatabaseMetadataExtractor {
                     "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? " +
                     "ORDER BY ORDINAL_POSITION";
         
-        ddl.append("CREATE TABLE [").append(table.getSchema()).append("].[").append(table.getName()).append("] (\n");
+        ddl.append("CREATE TABLE [").append(table.getName()).append("] (\n");
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, table.getSchema());
@@ -284,8 +284,7 @@ public class SQLServerMetadataExtractor implements DatabaseMetadataExtractor {
             stmt.setString(2, view.getName());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    ddl.append("CREATE VIEW [").append(view.getSchema()).append("].[")
-                       .append(view.getName()).append("] AS\n");
+                    ddl.append("CREATE VIEW [").append(view.getName()).append("] AS\n");
                     ddl.append(rs.getString("VIEW_DEFINITION"));
                 }
             }
@@ -368,8 +367,7 @@ public class SQLServerMetadataExtractor implements DatabaseMetadataExtractor {
                         if (rs.getBoolean("is_unique")) {
                             ddl.append("UNIQUE ");
                         }
-                        ddl.append("INDEX [").append(indexName).append("] ON [")
-                           .append(index.getSchema()).append("].[").append(tableName).append("]");
+                        ddl.append("INDEX [").append(indexName).append("] ON [").append(tableName).append("]");
                     }
                 }
             } catch (SQLException e) {
