@@ -75,7 +75,25 @@ public class DatabaseCompareService {
         
         // Generate and save report
         logger.info("生成比较报告...");
-        generateReport(result, outputFile, outputFormat, verbose);
+        
+        // Auto-generate report with timestamp if no output file specified
+        String finalOutputFile = outputFile;
+        String finalFormat = outputFormat;
+        if (finalOutputFile == null || finalOutputFile.isEmpty()) {
+            // Create reports directory if not exists
+            java.io.File reportsDir = new java.io.File("reports");
+            if (!reportsDir.exists()) {
+                reportsDir.mkdirs();
+            }
+            
+            // Generate timestamp-based filename
+            String timestamp = java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            finalOutputFile = String.format("reports/db_compare_%s.html", timestamp);
+            finalFormat = "HTML";
+        }
+        
+        generateReport(result, finalOutputFile, finalFormat, true); // Always use verbose for detailed reports
         
         // Print summary
         printSummary(result);
@@ -139,15 +157,27 @@ public class DatabaseCompareService {
     private void enrichWithDDL(DatabaseConfig config, List<DatabaseObject> objects) throws SQLException {
         DatabaseMetadataExtractor extractor = getExtractor(config.getType());
         
+        System.out.println("正在提取 " + objects.size() + " 个对象的DDL定义...");
+        int processed = 0;
+        
         for (DatabaseObject object : objects) {
+            processed++;
             try {
+                System.out.printf("[%d/%d] 提取 %s DDL... ", processed, objects.size(), object.getObjectKey());
                 String ddl = extractor.getDDL(config, object);
                 object.setDdl(ddl);
+                System.out.println("成功");
+                
+                if (processed % 10 == 0) {
+                    System.out.println("已处理 " + processed + "/" + objects.size() + " 个对象");
+                }
             } catch (SQLException e) {
+                System.out.println("失败: " + e.getMessage());
                 logger.warn("获取DDL失败 {}: {}", object.getObjectKey(), e.getMessage());
                 object.setDdl("");
             }
         }
+        System.out.println("DDL提取完成，成功处理 " + processed + " 个对象");
     }
 
     private ComparisonResult performComparison(List<DatabaseObject> sourceObjects, 
@@ -340,6 +370,8 @@ public class DatabaseCompareService {
     private void generateReport(ComparisonResult result, String outputFile, String outputFormat, boolean verbose) {
         try {
             if (outputFile != null && !outputFile.isEmpty()) {
+                System.out.println("正在生成详细比较报告: " + outputFile);
+                
                 // Generate file report
                 if ("JSON".equalsIgnoreCase(outputFormat)) {
                     generateJsonReport(result, outputFile, verbose);
@@ -348,9 +380,12 @@ public class DatabaseCompareService {
                 } else {
                     generateTextReport(result, outputFile, verbose);
                 }
+                
+                System.out.println("比较报告已保存到: " + outputFile);
                 logger.info("报告已保存到: {}", outputFile);
             }
         } catch (Exception e) {
+            System.err.println("生成报告失败: " + e.getMessage());
             logger.error("生成报告失败: {}", e.getMessage(), e);
         }
     }
@@ -408,58 +443,172 @@ public class DatabaseCompareService {
     }
 
     private void generateHtmlReport(ComparisonResult result, String outputFile, boolean verbose) {
-        // Simple HTML generation
-        try (java.io.PrintWriter writer = new java.io.PrintWriter(outputFile)) {
+        try (java.io.PrintWriter writer = new java.io.PrintWriter(outputFile, "UTF-8")) {
             writer.println("<!DOCTYPE html>");
-            writer.println("<html><head><title>数据库比较报告</title>");
-            writer.println("<style>body{font-family:Arial,sans-serif;margin:20px;}");
-            writer.println("table{border-collapse:collapse;width:100%;}");
-            writer.println("th,td{border:1px solid #ddd;padding:8px;text-align:left;}");
-            writer.println("th{background-color:#f2f2f2;}</style></head><body>");
+            writer.println("<html><head>");
+            writer.println("<meta charset='UTF-8'>");
+            writer.println("<title>数据库比较报告</title>");
+            writer.println("<style>");
+            writer.println("body{font-family:Arial,sans-serif;margin:20px;line-height:1.6;}");
+            writer.println("h1{color:#2c3e50;border-bottom:3px solid #3498db;padding-bottom:10px;}");
+            writer.println("h2{color:#34495e;margin-top:30px;}");
+            writer.println("h3{color:#7f8c8d;margin-top:25px;}");
+            writer.println("table{border-collapse:collapse;width:100%;margin:15px 0;}");
+            writer.println("th,td{border:1px solid #ddd;padding:12px;text-align:left;vertical-align:top;}");
+            writer.println("th{background-color:#f8f9fa;font-weight:bold;}");
+            writer.println(".summary{background-color:#e8f5e8;padding:15px;border-radius:5px;margin:20px 0;}");
+            writer.println(".source-only{background-color:#fff3cd;padding:10px;border-left:4px solid #ffc107;}");
+            writer.println(".target-only{background-color:#d1ecf1;padding:10px;border-left:4px solid #17a2b8;}");
+            writer.println(".different{background-color:#f8d7da;padding:10px;border-left:4px solid #dc3545;}");
+            writer.println(".same{background-color:#d4edda;padding:10px;border-left:4px solid #28a745;}");
+            writer.println(".ddl-block{background-color:#f8f9fa;border:1px solid #e9ecef;padding:10px;margin:10px 0;font-family:monospace;white-space:pre-wrap;max-height:300px;overflow-y:auto;}");
+            writer.println(".object-details{margin:20px 0;border:1px solid #dee2e6;border-radius:5px;}");
+            writer.println(".object-header{background-color:#f1f3f4;padding:10px;font-weight:bold;border-bottom:1px solid #dee2e6;}");
+            writer.println(".object-content{padding:15px;}");
+            writer.println("</style></head><body>");
             
-            writer.println("<h1>数据库比较报告</h1>");
+            writer.println("<h1>🔍 数据库结构比较报告</h1>");
+            
+            writer.println("<div class='summary'>");
+            writer.println("<h2>📊 比较概览</h2>");
             writer.println("<p><strong>生成时间:</strong> " + result.getComparisonTime() + "</p>");
-            writer.println("<p><strong>源数据库:</strong> " + result.getSourceDatabase() + "</p>");
-            writer.println("<p><strong>目标数据库:</strong> " + result.getTargetDatabase() + "</p>");
+            writer.println("<p><strong>源数据库:</strong> " + escapeHtml(result.getSourceDatabase()) + "</p>");
+            writer.println("<p><strong>目标数据库:</strong> " + escapeHtml(result.getTargetDatabase()) + "</p>");
+            writer.println("</div>");
             
-            writer.println("<h2>摘要</h2>");
-            writer.println("<ul>");
-            writer.println("<li>相同对象: " + result.getIdenticalObjects().size() + "</li>");
-            writer.println("<li>不同对象: " + result.getDifferentObjects().size() + "</li>");
-            writer.println("<li>仅源数据库对象: " + result.getSourceOnlyObjects().size() + "</li>");
-            writer.println("<li>仅目标数据库对象: " + result.getTargetOnlyObjects().size() + "</li>");
-            writer.println("</ul>");
+            // 统计信息表格
+            writer.println("<h2>📈 对象统计</h2>");
+            writer.println("<table>");
+            writer.println("<tr><th>对象类型</th><th>源数据库</th><th>目标数据库</th><th>状态</th></tr>");
+            for (DatabaseObjectType type : DatabaseObjectType.values()) {
+                int sourceCount = result.getSourceObjectCounts().getOrDefault(type, 0);
+                int targetCount = result.getTargetObjectCounts().getOrDefault(type, 0);
+                if (sourceCount > 0 || targetCount > 0) {
+                    String status = sourceCount == targetCount ? "✅ 相等" : "⚠️ 不等";
+                    writer.printf("<tr><td>%s</td><td>%d</td><td>%d</td><td>%s</td></tr>%n", 
+                                type, sourceCount, targetCount, status);
+                }
+            }
+            writer.println("</table>");
             
+            // 比较结果摘要
+            writer.println("<h2>🎯 比较结果摘要</h2>");
+            writer.println("<table>");
+            writer.println("<tr><th>类别</th><th>数量</th><th>说明</th></tr>");
+            writer.printf("<tr><td class='same'>相同对象</td><td>%d</td><td>两个数据库中存在且DDL完全相同的对象</td></tr>%n", result.getIdenticalObjects().size());
+            writer.printf("<tr><td class='different'>不同对象</td><td>%d</td><td>两个数据库中都存在但DDL结构不同的对象</td></tr>%n", result.getDifferentObjects().size());
+            writer.printf("<tr><td class='source-only'>仅源数据库</td><td>%d</td><td>仅存在于源数据库的对象</td></tr>%n", result.getSourceOnlyObjects().size());
+            writer.printf("<tr><td class='target-only'>仅目标数据库</td><td>%d</td><td>仅存在于目标数据库的对象</td></tr>%n", result.getTargetOnlyObjects().size());
+            writer.println("</table>");
+            
+            // 详细比较结果
             if (verbose) {
+                // 不同的对象（最重要）
+                if (!result.getDifferences().isEmpty()) {
+                    writer.println("<h2>⚠️ DDL结构不同的对象</h2>");
+                    for (ComparisonResult.ObjectDifference diff : result.getDifferences()) {
+                        DatabaseObject sourceObj = diff.getSourceObject();
+                        DatabaseObject targetObj = diff.getTargetObject();
+                        String nameKey = sourceObj.getObjectKeyWithoutSchema();
+                        
+                        writer.println("<div class='object-details'>");
+                        writer.println("<div class='object-header different'>");
+                        writer.printf("🔄 %s - DDL结构差异%n", nameKey);
+                        writer.println("</div>");
+                        writer.println("<div class='object-content'>");
+                        
+                        writer.println("<h4>📤 源数据库 DDL (" + sourceObj.getFullName() + ")</h4>");
+                        String sourceDDL = sourceObj.getDdl();
+                        if (sourceDDL != null && !sourceDDL.trim().isEmpty()) {
+                            writer.println("<div class='ddl-block'>" + escapeHtml(sourceDDL) + "</div>");
+                        } else {
+                            writer.println("<div class='ddl-block' style='color:#999;'>DDL内容为空或未提取</div>");
+                        }
+                        
+                        writer.println("<h4>📥 目标数据库 DDL (" + targetObj.getFullName() + ")</h4>");
+                        String targetDDL = targetObj.getDdl();
+                        if (targetDDL != null && !targetDDL.trim().isEmpty()) {
+                            writer.println("<div class='ddl-block'>" + escapeHtml(targetDDL) + "</div>");
+                        } else {
+                            writer.println("<div class='ddl-block' style='color:#999;'>DDL内容为空或未提取</div>");
+                        }
+                        
+                        // 显示差异原因
+                        writer.println("<h4>🔍 差异说明</h4>");
+                        writer.println("<p><strong>差异类型:</strong> " + diff.getDifferenceType() + "</p>");
+                        writer.println("<p><strong>详细说明:</strong> " + diff.getDescription() + "</p>");
+                        
+                        writer.println("</div></div>");
+                    }
+                }
+                
+                // 仅源数据库存在的对象
                 if (!result.getSourceOnlyObjects().isEmpty()) {
-                    writer.println("<h3>仅存在于源数据库的对象</h3><ul>");
+                    writer.println("<h2>📤 仅存在于源数据库的对象</h2>");
                     for (DatabaseObject obj : result.getSourceOnlyObjects()) {
-                        writer.println("<li>" + obj.getObjectKey() + "</li>");
+                        writer.println("<div class='object-details'>");
+                        writer.println("<div class='object-header source-only'>");
+                        writer.printf("➡️ %s%n", obj.getObjectKeyWithoutSchema());
+                        writer.println("</div>");
+                        writer.println("<div class='object-content'>");
+                        writer.println("<p><strong>对象位置:</strong> " + obj.getFullName() + "</p>");
+                        if (obj.getDdl() != null && !obj.getDdl().trim().isEmpty()) {
+                            writer.println("<h4>DDL定义</h4>");
+                            writer.println("<div class='ddl-block'>" + escapeHtml(obj.getDdl()) + "</div>");
+                        }
+                        writer.println("</div></div>");
                     }
-                    writer.println("</ul>");
                 }
                 
+                // 仅目标数据库存在的对象
                 if (!result.getTargetOnlyObjects().isEmpty()) {
-                    writer.println("<h3>仅存在于目标数据库的对象</h3><ul>");
+                    writer.println("<h2>📥 仅存在于目标数据库的对象</h2>");
                     for (DatabaseObject obj : result.getTargetOnlyObjects()) {
-                        writer.println("<li>" + obj.getObjectKey() + "</li>");
+                        writer.println("<div class='object-details'>");
+                        writer.println("<div class='object-header target-only'>");
+                        writer.printf("⬅️ %s%n", obj.getObjectKeyWithoutSchema());
+                        writer.println("</div>");
+                        writer.println("<div class='object-content'>");
+                        writer.println("<p><strong>对象位置:</strong> " + obj.getFullName() + "</p>");
+                        if (obj.getDdl() != null && !obj.getDdl().trim().isEmpty()) {
+                            writer.println("<h4>DDL定义</h4>");
+                            writer.println("<div class='ddl-block'>" + escapeHtml(obj.getDdl()) + "</div>");
+                        }
+                        writer.println("</div></div>");
                     }
-                    writer.println("</ul>");
                 }
                 
-                if (!result.getDifferentObjects().isEmpty()) {
-                    writer.println("<h3>DDL不同的对象</h3><ul>");
-                    for (DatabaseObject obj : result.getDifferentObjects()) {
-                        writer.println("<li>" + obj.getObjectKey() + "</li>");
+                // 相同的对象
+                if (!result.getIdenticalObjects().isEmpty()) {
+                    writer.println("<h2>✅ 完全相同的对象</h2>");
+                    writer.println("<p>以下对象在两个数据库中的DDL结构完全相同：</p>");
+                    writer.println("<ul>");
+                    for (DatabaseObject obj : result.getIdenticalObjects()) {
+                        writer.printf("<li class='same'>%s (%s)</li>%n", 
+                                     obj.getObjectKeyWithoutSchema(), obj.getFullName());
                     }
                     writer.println("</ul>");
                 }
             }
+            
+            writer.println("<hr style='margin-top:40px;'>");
+            writer.println("<p style='text-align:center;color:#6c757d;'>");
+            writer.println("报告生成时间: " + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            writer.println("</p>");
             
             writer.println("</body></html>");
             
         } catch (java.io.IOException e) {
             logger.error("写入HTML报告失败: {}", e.getMessage());
         }
+    }
+    
+    private String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#x27;");
     }
 } 
