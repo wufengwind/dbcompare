@@ -351,7 +351,8 @@ public class SQLServerMetadataExtractor implements DatabaseMetadataExtractor {
             String tableName = parts[0];
             String indexName = parts[1];
             
-            String sql = "SELECT i.name, i.type_desc, i.is_unique " +
+            // Get basic index information
+            String sql = "SELECT i.name, i.type_desc, i.is_unique, i.object_id " +
                         "FROM sys.indexes i " +
                         "INNER JOIN sys.tables t ON i.object_id = t.object_id " +
                         "INNER JOIN sys.schemas s ON t.schema_id = s.schema_id " +
@@ -363,11 +364,40 @@ public class SQLServerMetadataExtractor implements DatabaseMetadataExtractor {
                 stmt.setString(3, indexName);
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
+                        int objectId = rs.getInt("object_id");
+                        boolean isUnique = rs.getBoolean("is_unique");
+                        
                         ddl.append("CREATE ");
-                        if (rs.getBoolean("is_unique")) {
+                        if (isUnique) {
                             ddl.append("UNIQUE ");
                         }
                         ddl.append("INDEX [").append(indexName).append("] ON [").append(tableName).append("]");
+                        
+                        // Get index columns
+                        String columnsSql = "SELECT c.name, ic.is_descending_key " +
+                                          "FROM sys.index_columns ic " +
+                                          "INNER JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id " +
+                                          "WHERE ic.object_id = ? AND ic.index_id = " +
+                                          "(SELECT index_id FROM sys.indexes WHERE object_id = ? AND name = ?) " +
+                                          "ORDER BY ic.key_ordinal";
+                        
+                        try (PreparedStatement colStmt = connection.prepareStatement(columnsSql)) {
+                            colStmt.setInt(1, objectId);
+                            colStmt.setInt(2, objectId);
+                            colStmt.setString(3, indexName);
+                            try (ResultSet colRs = colStmt.executeQuery()) {
+                                List<String> columns = new ArrayList<>();
+                                while (colRs.next()) {
+                                    String columnName = colRs.getString("name");
+                                    boolean isDesc = colRs.getBoolean("is_descending_key");
+                                    columns.add("[" + columnName + "]" + (isDesc ? " DESC" : ""));
+                                }
+                                
+                                if (!columns.isEmpty()) {
+                                    ddl.append(" (").append(String.join(", ", columns)).append(")");
+                                }
+                            }
+                        }
                     }
                 }
             } catch (SQLException e) {
