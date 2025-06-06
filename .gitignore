@@ -55,6 +55,7 @@ Thumbs.db
 # Application specific
 logs/
 reports/
+package/
 comparison_report.*
 *.properties
 !example-config.properties 

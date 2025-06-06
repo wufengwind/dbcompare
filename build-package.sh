@@ -156,13 +156,18 @@ for doc_file in "${DOC_FILES[@]}"; do
     fi
 done
 
+# 存放压缩包的文件夹
+if [ ! -d "package" ]; then
+    mkdir package
+fi
+
 # 创建压缩包
 PACKAGE_NAME="db-compare-tool-v$VERSION"
 echo -e "${YELLOW}[信息]${NC} 创建压缩包: $PACKAGE_NAME.zip"
 
 # 检查zip命令是否可用
 if command -v zip &> /dev/null; then
-    if cd release && zip -r ../$PACKAGE_NAME.zip . && cd ..; then
+    if cd release && zip -r ../package/$PACKAGE_NAME.zip . && cd ..; then
         echo -e "${GREEN}[信息]${NC} ZIP压缩包创建成功"
     else
         echo -e "${RED}[错误]${NC} 创建ZIP压缩包失败"
@@ -171,7 +176,7 @@ if command -v zip &> /dev/null; then
 elif command -v tar &> /dev/null; then
     # 如果没有zip，使用tar.gz
     PACKAGE_NAME="$PACKAGE_NAME.tar.gz"
-    if tar -czf $PACKAGE_NAME -C release .; then
+    if tar -czf package/$PACKAGE_NAME -C release .; then
         echo -e "${YELLOW}[信息]${NC} 使用tar.gz格式: $PACKAGE_NAME"
         echo -e "${GREEN}[信息]${NC} TAR.GZ压缩包创建成功"
     else
@@ -186,7 +191,7 @@ fi
 
 # 获取文件大小
 if [ -f "$PACKAGE_NAME" ]; then
-    FILE_SIZE=$(ls -lh "$PACKAGE_NAME" | awk '{print $5}')
+    FILE_SIZE=$(ls -lh "package/$PACKAGE_NAME" | awk '{print $5}')
 else
     FILE_SIZE="未知"
 fi
