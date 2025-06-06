@@ -45,7 +45,7 @@ public class DatabaseCompareService {
      */
     public void compare(DatabaseConfig sourceConfig, DatabaseConfig targetConfig,
                        String[] includeTypes, String[] excludeTypes,
-                       String outputFile, String outputFormat, boolean verbose) throws Exception {
+                       boolean verbose) throws Exception {
         
         logger.info("开始比较数据库 {} 和 {}", 
                    sourceConfig.getType(), targetConfig.getType());
@@ -76,27 +76,24 @@ public class DatabaseCompareService {
         // Generate and save report
         logger.info("生成比较报告...");
         
-        // Auto-generate report with timestamp if no output file specified
-        String finalOutputFile = outputFile;
-        String finalFormat = outputFormat;
-        if (finalOutputFile == null || finalOutputFile.isEmpty()) {
-            // Create reports directory if not exists
-            java.io.File reportsDir = new java.io.File("reports");
-            if (!reportsDir.exists()) {
-                reportsDir.mkdirs();
-            }
-            
-            // Generate timestamp-based filename
-            String timestamp = java.time.LocalDateTime.now()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            finalOutputFile = String.format("reports/db_compare_%s.html", timestamp);
-            finalFormat = "HTML";
+        // Auto-generate report with timestamp
+        // Create reports directory if not exists
+        java.io.File reportsDir = new java.io.File("reports");
+        if (!reportsDir.exists()) {
+            reportsDir.mkdirs();
         }
         
-        generateReport(result, finalOutputFile, finalFormat, true); // Always use verbose for detailed reports
+        // Generate timestamp-based filename
+        String timestamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String reportFile = String.format("reports/db_compare_%s.html", timestamp);
+        
+        generateReport(result, reportFile, verbose);
         
         // Print summary
         printSummary(result);
+        
+        System.out.println("\n比较报告已保存到: " + reportFile);
     }
 
     private void validateConfigurations(DatabaseConfig sourceConfig, DatabaseConfig targetConfig) 
@@ -382,82 +379,15 @@ public class DatabaseCompareService {
         return normalized;
     }
 
-    private void generateReport(ComparisonResult result, String outputFile, String outputFormat, boolean verbose) {
+    private void generateReport(ComparisonResult result, String outputFile, boolean verbose) {
         try {
-            if (outputFile != null && !outputFile.isEmpty()) {
-                System.out.println("正在生成详细比较报告: " + outputFile);
-                
-                // Generate file report
-                if ("JSON".equalsIgnoreCase(outputFormat)) {
-                    generateJsonReport(result, outputFile, verbose);
-                } else if ("HTML".equalsIgnoreCase(outputFormat)) {
-                    generateHtmlReport(result, outputFile, verbose);
-                } else {
-                    generateTextReport(result, outputFile, verbose);
-                }
-                
-                System.out.println("比较报告已保存到: " + outputFile);
-                logger.info("报告已保存到: {}", outputFile);
-            }
+            System.out.println("正在生成详细比较报告: " + outputFile);
+            generateHtmlReport(result, outputFile, true); // Always show detailed information
+            logger.info("报告已保存到: {}", outputFile);
         } catch (Exception e) {
             System.err.println("生成报告失败: " + e.getMessage());
             logger.error("生成报告失败: {}", e.getMessage(), e);
         }
-    }
-
-    private void generateTextReport(ComparisonResult result, String outputFile, boolean verbose) {
-        // For now, just create a simple text report
-        try (java.io.PrintWriter writer = new java.io.PrintWriter(outputFile)) {
-            writer.println("=== 数据库比较报告 ===");
-            writer.println("生成时间: " + result.getComparisonTime());
-            writer.println("源数据库: " + result.getSourceDatabase());
-            writer.println("目标数据库: " + result.getTargetDatabase());
-            writer.println();
-            writer.println("软件信息: " + VersionInfo.getFullVersionInfo());
-            writer.println("版权信息: " + VersionInfo.getCopyrightInfo());
-            writer.println();
-            
-            writer.println("摘要:");
-            writer.println("- 相同对象: " + result.getIdenticalObjects().size());
-            writer.println("- 不同对象: " + result.getDifferentObjects().size());
-            writer.println("- 仅源数据库对象: " + result.getSourceOnlyObjects().size());
-            writer.println("- 仅目标数据库对象: " + result.getTargetOnlyObjects().size());
-            writer.println();
-            
-            if (verbose) {
-                if (!result.getSourceOnlyObjects().isEmpty()) {
-                    writer.println("仅存在于源数据库的对象:");
-                    for (DatabaseObject obj : result.getSourceOnlyObjects()) {
-                        writer.println("  " + obj.getObjectKey());
-                    }
-                    writer.println();
-                }
-                
-                if (!result.getTargetOnlyObjects().isEmpty()) {
-                    writer.println("仅存在于目标数据库的对象:");
-                    for (DatabaseObject obj : result.getTargetOnlyObjects()) {
-                        writer.println("  " + obj.getObjectKey());
-                    }
-                    writer.println();
-                }
-                
-                if (!result.getDifferentObjects().isEmpty()) {
-                    writer.println("DDL不同的对象:");
-                    for (DatabaseObject obj : result.getDifferentObjects()) {
-                        writer.println("  " + obj.getObjectKey());
-                    }
-                }
-            }
-            
-        } catch (java.io.IOException e) {
-            logger.error("写入文本报告失败: {}", e.getMessage());
-        }
-    }
-
-    private void generateJsonReport(ComparisonResult result, String outputFile, boolean verbose) {
-        // Simple JSON generation - in a real implementation, you'd use Jackson
-        logger.info("JSON报告生成功能尚未完全实现。使用文本格式。");
-        generateTextReport(result, outputFile.replace(".json", ".txt"), verbose);
     }
 
     private void generateHtmlReport(ComparisonResult result, String outputFile, boolean verbose) {
@@ -502,7 +432,7 @@ public class DatabaseCompareService {
             writer.println("<div style='text-align:right;margin-bottom:20px;padding:10px;background:#f8f9fa;border-radius:5px;'>");
             writer.println("<div style='font-size:0.9em;color:#6c757d;'>");
             writer.println("<strong>" + escapeHtml(VersionInfo.getFullVersionInfo()) + "</strong><br/>");
-            writer.println(escapeHtml(VersionInfo.getCopyrightInfo()));
+            // writer.println(escapeHtml(VersionInfo.getCopyrightInfo()));
             writer.println("</div>");
             writer.println("</div>");
             

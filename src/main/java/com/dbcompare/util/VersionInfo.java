@@ -72,7 +72,7 @@ public class VersionInfo {
     }
     
     public static String getFullVersionInfo() {
-        return String.format("数据库比较工具 v%s | 作者：%s | 构建号：%s | 构建时间：%s | Java：%s", 
+        return String.format("数据库比较工具 v%s | 作者：%s | 构建号：%s | 构建时间：%s | JDK：%s", 
                            version, AUTHOR, gitCommit, buildTime, javaVersion);
     }
     

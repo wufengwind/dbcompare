@@ -2,67 +2,94 @@
 
 这里提供了数据库比较工具的详细使用示例。
 
-## 基本使用示例
+## 基本用法
 
-### 1. 显示帮助信息
+比较两个MySQL数据库：
 ```bash
-java -jar target/db-compare-tool-1.0.0.jar --help
-```
-
-### 2. 显示版本信息
-```bash
-java -jar target/db-compare-tool-1.0.0.jar --version
-```
-
-## MySQL数据库比较
-
-### 同类型数据库比较
-```bash
-java -jar target/db-compare-tool-1.0.0.jar \
+java -jar db-compare-tool.jar \
   --source-type MYSQL \
-  --source-url "jdbc:mysql://localhost:3306/source_db?useSSL=false&serverTimezone=UTC" \
+  --source-url "jdbc:mysql://localhost:3306/source_db" \
   --source-user root \
-  --source-password password123 \
-  --source-schema source_db \
+  --source-password password \
   --target-type MYSQL \
-  --target-url "jdbc:mysql://localhost:3306/target_db?useSSL=false&serverTimezone=UTC" \
+  --target-url "jdbc:mysql://localhost:3306/target_db" \
   --target-user root \
-  --target-password password123 \
-  --target-schema target_db \
-  --verbose
+  --target-password password
 ```
 
-### 只比较表和视图
+## 高级用法
+
+### 指定Schema
 ```bash
-java -jar target/db-compare-tool-1.0.0.jar \
+java -jar db-compare-tool.jar \
+  --source-type MYSQL \
+  --source-url "jdbc:mysql://localhost:3306/testdb" \
+  --source-user root \
+  --source-password password \
+  --source-schema schema1 \
+  --target-type MYSQL \
+  --target-url "jdbc:mysql://localhost:3306/testdb" \
+  --target-user root \
+  --target-password password \
+  --target-schema schema2
+```
+
+### 只比较特定类型的对象
+```bash
+java -jar db-compare-tool.jar \
   --source-type MYSQL \
   --source-url "jdbc:mysql://localhost:3306/db1" \
-  --source-user user1 \
-  --source-password pass1 \
+  --source-user root \
+  --source-password password \
   --target-type MYSQL \
   --target-url "jdbc:mysql://localhost:3306/db2" \
-  --target-user user2 \
-  --target-password pass2 \
-  --include-types TABLE,VIEW \
-  --output comparison_report.txt \
-  --verbose
+  --target-user root \
+  --target-password password \
+  --include-types TABLE,VIEW,PROCEDURE
 ```
 
-### 排除索引和约束
+### 排除特定类型的对象
 ```bash
-java -jar target/db-compare-tool-1.0.0.jar \
+java -jar db-compare-tool.jar \
   --source-type MYSQL \
-  --source-url "jdbc:mysql://localhost:3306/production_db" \
-  --source-user prod_user \
-  --source-password prod_pass \
+  --source-url "jdbc:mysql://localhost:3306/db1" \
+  --source-user root \
+  --source-password password \
   --target-type MYSQL \
-  --target-url "jdbc:mysql://localhost:3306/staging_db" \
-  --target-user stage_user \
-  --target-password stage_pass \
-  --exclude-types INDEX,CONSTRAINT \
-  --output staging_vs_production.html \
-  --format HTML
+  --target-url "jdbc:mysql://localhost:3306/db2" \
+  --target-user root \
+  --target-password password \
+  --exclude-types INDEX,CONSTRAINT
 ```
+
+## 输出说明
+
+程序会在当前目录下的 `reports` 文件夹中生成HTML格式的比较报告，文件名格式为：
+```
+reports/db_compare_YYYYMMDD_HHMMSS.html
+```
+
+报告包含：
+- 基本信息（比较时间、数据库信息等）
+- 对象统计（按类型统计对象数量）
+- 比较结果摘要
+- 详细对比信息（包括DDL差异）
+
+## 支持的数据库类型
+
+- MYSQL
+- ORACLE
+- SQLSERVER
+- POSTGRESQL
+- DB2
+- DM8
+
+## 注意事项
+
+1. 确保有足够的权限访问源和目标数据库
+2. 建议使用 `--verbose` 参数获取更详细的比较信息
+3. 报告文件会自动生成在 reports 目录下，无需手动指定
+4. 如果不指定 schema，将使用数据库默认 schema
 
 ## 异构数据库比较
 
@@ -98,26 +125,6 @@ java -jar target/db-compare-tool-1.0.0.jar \
   --output migration_report.html \
   --format HTML
 ```
-
-## 输出格式示例
-
-### 文本格式报告
-```bash
---output report.txt --format TXT
-```
-生成简洁的文本报告，适合在控制台查看。
-
-### HTML格式报告
-```bash
---output report.html --format HTML
-```
-生成带有样式的HTML报告，适合在浏览器中查看。
-
-### JSON格式报告
-```bash
---output report.json --format JSON
-```
-生成JSON格式报告，适合程序化处理。
 
 ## 常见使用场景
 

@@ -12,84 +12,56 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
 
-@Command(name = "dbcompare", 
-         mixinStandardHelpOptions = true, 
-         version = "1.0.0",
-         description = "Database schema comparison tool")
+@Command(name = "db-compare", 
+        description = "比较两个数据库的结构差异",
+        version = "1.0.0",
+        mixinStandardHelpOptions = true)
 public class DbCompareApplication implements Callable<Integer> {
 
     private static final Logger logger = LoggerFactory.getLogger(DbCompareApplication.class);
 
-    @Option(names = {"-st", "--source-type"}, 
-            description = "Source database type (MYSQL, ORACLE, SQLSERVER, POSTGRESQL, DB2, DM8)", 
-            required = true)
+    @Option(names = {"-st", "--source-type"}, description = "源数据库类型", required = true)
     private String sourceType;
-
-    @Option(names = {"-su", "--source-url"}, 
-            description = "Source database URL", 
-            required = true)
+    
+    @Option(names = {"-su", "--source-url"}, description = "源数据库URL", required = true)
     private String sourceUrl;
-
-    @Option(names = {"-suser", "--source-user"}, 
-            description = "Source database username", 
-            required = true)
+    
+    @Option(names = {"--source-user"}, description = "源数据库用户名", required = true)
     private String sourceUser;
-
-    @Option(names = {"-spwd", "--source-password"}, 
-            description = "Source database password", 
-            required = true)
+    
+    @Option(names = {"--source-password"}, description = "源数据库密码", required = true)
     private String sourcePassword;
-
-    @Option(names = {"-ss", "--source-schema"}, 
-            description = "Source database schema/database name")
+    
+    @Option(names = {"--source-schema"}, description = "源数据库Schema")
     private String sourceSchema;
-
-    @Option(names = {"-tt", "--target-type"}, 
-            description = "Target database type (MYSQL, ORACLE, SQLSERVER, POSTGRESQL, DB2, DM8)", 
-            required = true)
+    
+    @Option(names = {"-tt", "--target-type"}, description = "目标数据库类型", required = true)
     private String targetType;
-
-    @Option(names = {"-tu", "--target-url"}, 
-            description = "Target database URL", 
-            required = true)
+    
+    @Option(names = {"-tu", "--target-url"}, description = "目标数据库URL", required = true)
     private String targetUrl;
-
-    @Option(names = {"-tuser", "--target-user"}, 
-            description = "Target database username", 
-            required = true)
+    
+    @Option(names = {"--target-user"}, description = "目标数据库用户名", required = true)
     private String targetUser;
-
-    @Option(names = {"-tpwd", "--target-password"}, 
-            description = "Target database password", 
-            required = true)
+    
+    @Option(names = {"--target-password"}, description = "目标数据库密码", required = true)
     private String targetPassword;
-
-    @Option(names = {"-ts", "--target-schema"}, 
-            description = "Target database schema/database name")
+    
+    @Option(names = {"--target-schema"}, description = "目标数据库Schema")
     private String targetSchema;
-
-    @Option(names = {"-o", "--output"}, 
-            description = "Output file path for comparison results")
-    private String outputFile;
-
-    @Option(names = {"-f", "--format"}, 
-            description = "Output format (JSON, HTML, TXT)", 
-            defaultValue = "TXT")
-    private String outputFormat;
-
+    
     @Option(names = {"-i", "--include-types"}, 
-            description = "Include only specific object types (TABLE, VIEW, PROCEDURE, FUNCTION, TRIGGER, INDEX, CONSTRAINT, SEQUENCE, SYNONYM)",
+            description = "要比较的对象类型 (TABLE, VIEW, PROCEDURE, FUNCTION, TRIGGER, INDEX, CONSTRAINT, SEQUENCE)", 
             split = ",")
     private String[] includeTypes;
-
+    
     @Option(names = {"-e", "--exclude-types"}, 
-            description = "Exclude specific object types",
+            description = "要排除的对象类型 (TABLE, VIEW, PROCEDURE, FUNCTION, TRIGGER, INDEX, CONSTRAINT, SEQUENCE)", 
             split = ",")
     private String[] excludeTypes;
-
-    @Option(names = {"-v", "--verbose"}, 
-            description = "Enable verbose output")
-    private boolean verbose;
+    
+    @Option(names = {"-v", "--verbose"}, description = "输出详细信息")
+    private boolean verbose = false;
 
     public static void main(String[] args) {
         // 显示软件落款信息
@@ -102,7 +74,6 @@ public class DbCompareApplication implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         try {
-        //     logger.info("版本信息: {}", VersionInfo.getFullVersionInfo());
             logger.info("开始数据库比较...");
             // Create database configurations
             DatabaseConfig sourceConfig = new DatabaseConfig(
@@ -116,7 +87,7 @@ public class DbCompareApplication implements Callable<Integer> {
             // Perform comparison
             compareService.compare(sourceConfig, targetConfig, 
                                  includeTypes, excludeTypes, 
-                                 outputFile, outputFormat, verbose);
+                                 verbose);
 
             logger.info("数据库比较成功完成！");
             return 0;
