@@ -102,9 +102,8 @@ public class DbCompareApplication implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         try {
+        //     logger.info("版本信息: {}", VersionInfo.getFullVersionInfo());
             logger.info("开始数据库比较...");
-            logger.info("版本信息: {}", VersionInfo.getFullVersionInfo());
-            
             // Create database configurations
             DatabaseConfig sourceConfig = new DatabaseConfig(
                 sourceType, sourceUrl, sourceUser, sourcePassword, sourceSchema);

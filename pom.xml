@@ -7,7 +7,7 @@
 
     <groupId>com.dbcompare</groupId>
     <artifactId>db-compare-tool</artifactId>
-    <version>1.1.2</version>
+    <version>1.0.8</version>
     <packaging>jar</packaging>
 
     <name>Database Compare Tool</name>

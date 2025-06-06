@@ -72,14 +72,14 @@ fi
 
 MVN_PATH=$(which mvn 2>/dev/null)
 if [ -n "$MVN_PATH" ]; then
-    echo -e "${WHITE}  Maven路径: $MVN_PATH${NC}"
+    echo -e "${BLUE}  Maven路径: $MVN_PATH${NC}"
 else
     echo -e "${YELLOW}  Maven路径: 未找到${NC}"
 fi
 
 GIT_PATH=$(which git 2>/dev/null)
 if [ -n "$GIT_PATH" ]; then
-    echo -e "${WHITE}  Git路径: $GIT_PATH${NC}"
+    echo -e "${BLUE}  Git路径: $GIT_PATH${NC}"
 else
     echo -e "${YELLOW}  Git路径: 未找到${NC}"
 fi
@@ -157,7 +157,7 @@ for doc_file in "${DOC_FILES[@]}"; do
 done
 
 # 创建压缩包
-PACKAGE_NAME="db-compare-tool-v$VERSION-$GIT_COMMIT-$BUILD_TIMESTAMP"
+PACKAGE_NAME="db-compare-tool-v$VERSION"
 echo -e "${YELLOW}[信息]${NC} 创建压缩包: $PACKAGE_NAME.zip"
 
 # 检查zip命令是否可用
@@ -201,9 +201,11 @@ echo -e "${BLUE}构建时间: $BUILD_TIME${NC}"
 echo -e "${BLUE}输出文件: $PACKAGE_NAME${NC}"
 echo -e "${BLUE}文件大小: $FILE_SIZE${NC}"
 echo -e "${GREEN}==============================================================${NC}"
+
 echo
 echo -e "${GREEN}[信息]${NC} 发布包已创建在: $PACKAGE_NAME"
 echo -e "${GREEN}[信息]${NC} 临时文件在 release 目录中"
 echo
 echo -e "${CYAN}[完成]${NC} 构建完成！可以分发 $PACKAGE_NAME 文件了。"
 echo 
+

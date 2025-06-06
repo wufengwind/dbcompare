@@ -90,9 +90,9 @@ public class VersionInfo {
     }
     
     public static void printBanner() {
-        System.out.println("********************** 版本信息 **********************");
+        System.out.println("********************** 构建信息 **********************");
         System.out.println("软件名称: 数据库比较工具");
-        System.out.println("软件版本: v" + version);
+        // System.out.println("软件版本: v" + version);
         System.out.println("软件作者: " + AUTHOR);
         System.out.println("哈希签名: " + gitCommit);
         System.out.println("构建时间: " + buildTime);
