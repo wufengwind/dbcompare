@@ -1,5 +1,7 @@
 # 使用示例
 
+> **说明：** 报告将自动以 HTML 格式输出到 `reports` 目录，无需指定格式或输出文件名。
+
 这里提供了数据库比较工具的详细使用示例。
 
 ## 基本使用示例
@@ -44,7 +46,6 @@ java -jar target/db-compare-tool-1.0.0.jar \
   --target-user user2 \
   --target-password pass2 \
   --include-types TABLE,VIEW \
-  --output comparison_report.txt \
   --verbose
 ```
 
@@ -59,9 +60,7 @@ java -jar target/db-compare-tool-1.0.0.jar \
   --target-url "jdbc:mysql://localhost:3306/staging_db" \
   --target-user stage_user \
   --target-password stage_pass \
-  --exclude-types INDEX,CONSTRAINT \
-  --output staging_vs_production.html \
-  --format HTML
+  --exclude-types INDEX,CONSTRAINT
 ```
 
 ## 异构数据库比较
@@ -78,8 +77,6 @@ java -jar target/db-compare-tool-1.0.0.jar \
   --target-user oracle_user \
   --target-password oracle_pass \
   --target-schema HR \
-  --output mysql_to_oracle_migration.json \
-  --format JSON \
   --verbose
 ```
 
@@ -94,30 +91,8 @@ java -jar target/db-compare-tool-1.0.0.jar \
   --target-url "jdbc:sqlserver://sqlserver:1433;databaseName=new_db" \
   --target-user sa \
   --target-password SqlServerPass123 \
-  --include-types TABLE,VIEW,PROCEDURE \
-  --output migration_report.html \
-  --format HTML
+  --include-types TABLE,VIEW,PROCEDURE 
 ```
-
-## 输出格式示例
-
-### 文本格式报告
-```bash
---output report.txt --format TXT
-```
-生成简洁的文本报告，适合在控制台查看。
-
-### HTML格式报告
-```bash
---output report.html --format HTML
-```
-生成带有样式的HTML报告，适合在浏览器中查看。
-
-### JSON格式报告
-```bash
---output report.json --format JSON
-```
-生成JSON格式报告，适合程序化处理。
 
 ## 常见使用场景
 
@@ -133,8 +108,6 @@ java -jar target/db-compare-tool-1.0.0.jar \
   --target-url "jdbc:postgresql://new-server:5432/app_db" \
   --target-user migrator \
   --target-password migrate123 \
-  --output migration_verification.html \
-  --format HTML \
   --verbose
 ```
 
@@ -151,7 +124,6 @@ java -jar target/db-compare-tool-1.0.0.jar \
   --target-user prod_user \
   --target-password prod_pass \
   --exclude-types INDEX \
-  --output dev_vs_prod.txt \
   --verbose
 ```
 
@@ -168,8 +140,6 @@ java -jar target/db-compare-tool-1.0.0.jar \
   --target-user readonly \
   --target-password readonly123 \
   --include-types TABLE,VIEW,PROCEDURE,FUNCTION \
-  --output release_changes.html \
-  --format HTML \
   --verbose
 ```
 
@@ -185,7 +155,6 @@ java -jar target/db-compare-tool-1.0.0.jar \
   --target-url "jdbc:mysql://restored:3306/production" \
   --target-user backup_user \
   --target-password backup_pass \
-  --output backup_verification.txt \
   --verbose
 ```
 
@@ -227,16 +196,7 @@ java -jar %JAR_FILE% ^
   --target-type MYSQL ^
   --target-url "%TARGET_DB%" ^
   --target-user root ^
-  --target-password password ^
-  --output daily_comparison.html ^
-  --format HTML ^
-  --verbose
-
-if %ERRORLEVEL% equ 0 (
-    echo Comparison completed successfully!
-) else (
-    echo Comparison failed!
-)
+  --target-password password
 ```
 
 ### Linux Shell脚本
@@ -256,8 +216,6 @@ java -jar "$JAR_FILE" \
   --target-url "$TARGET_DB" \
   --target-user root \
   --target-password password \
-  --output "daily_comparison_$(date +%Y%m%d).html" \
-  --format HTML \
   --verbose
 
 if [ $? -eq 0 ]; then
