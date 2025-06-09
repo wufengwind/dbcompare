@@ -4,7 +4,7 @@
 
 在运行此数据库比较工具之前，请确保您的系统已安装以下软件：
 
-### 1. Java Development Kit (JDK) 11 或更高版本
+### 1. Java Development Kit (JDK) 17 或更高版本
 
 **检查是否已安装：**
 ```bash
@@ -101,22 +101,6 @@ java -cp "build\classes;build\lib\*" com.dbcompare.DbCompareApplication --help
 - PostgreSQL
 - DB2
 
-### 手动安装的驱动
-
-#### DM8（达梦数据库）
-1. 从 [达梦官网](https://www.dameng.com/) 下载JDBC驱动
-2. 将驱动jar文件安装到本地Maven仓库：
-```bash
-mvn install:install-file -Dfile=DmJdbcDriver18.jar -DgroupId=com.dameng -DartifactId=DmJdbcDriver18 -Dversion=8.1.2.192 -Dpackaging=jar
-```
-3. 在pom.xml中添加依赖：
-```xml
-<dependency>
-    <groupId>com.dameng</groupId>
-    <artifactId>DmJdbcDriver18</artifactId>
-    <version>8.1.2.192</version>
-</dependency>
-```
 
 ## 快速开始
 

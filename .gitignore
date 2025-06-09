@@ -56,6 +56,7 @@ Thumbs.db
 logs/
 reports/
 package/
+项目周报/
 comparison_report.*
 *.properties
 !example-config.properties 
